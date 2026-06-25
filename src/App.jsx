@@ -6,6 +6,7 @@ import {
   Box,
   BriefcaseBusiness,
   Calendar,
+  ChevronsDown,
   GitBranch,
   Globe,
   Image,
@@ -122,7 +123,7 @@ const content = {
     keyTasks: 'وظایف کلیدی',
     goalLabel: 'هدف',
     skillsTitle: 'مهارت‌های اصلی',
-    projectsTitle: 'نمونه‌کارهای منتخب',
+    projectsTitle: 'نمونه‌کارها',
     projectsLead:
       'پیش‌نمایش کامل‌تر از محتوای محصول‌ها: سیستم فروشگاهی، جریان سفارش‌گیری، ابزارهای مدیریتی، گزارش‌گیری و تجربه آژانسی.',
     orangeGroup: 'سیستم‌های فروشگاهی / سفارش آنلاین',
@@ -230,31 +231,6 @@ const skillIcons = {
 
 const projects = [
   {
-    id: 'storefront',
-    tone: 'orange',
-    image: '/projects/seed-products.jpg',
-    images: [
-      '/projects/seed-products.jpg',
-      '/projects/seed-product-details.jpg',
-      '/projects/seed-shopping-cart.jpg',
-      '/projects/seed-order-confirmation.jpg',
-      '/projects/seed-login-register.jpg',
-    ],
-    title: { en: 'Restaurant Storefront & Ordering', fa: 'فروشگاه و سفارش‌گیری رستوران' },
-    category: {
-      en: 'Store / E-commerce systems',
-      fa: 'سیستم فروشگاهی / سفارش آنلاین',
-    },
-    description: {
-      en: 'A mobile-first storefront for restaurants with product discovery, details, cart flow, confirmation, login, discounts, and bottom navigation.',
-      fa: 'فروشگاه موبایل‌محور برای رستوران با کشف محصول، جزئیات، سبد خرید، تایید سفارش، ورود، تخفیف و ناوبری پایین.',
-    },
-    detail: {
-      en: 'This flow covers the customer side of Dootar: browsing categories, reading product details, adding and removing items, entering notes, reviewing final payment, and receiving order confirmation. The design balances quick food ordering with enough context for price, discount, inventory state, and restaurant identity. Small interaction details such as quantity controls, discount labels, disabled states, and confirmation feedback were designed to reduce hesitation and make the ordering path feel predictable.',
-      fa: 'این جریان سمت مشتری دوتر را پوشش می‌دهد: مرور دسته‌بندی‌ها، مشاهده جزئیات محصول، افزودن و حذف آیتم‌ها، ثبت توضیحات، بررسی مبلغ نهایی و دریافت تایید سفارش. طراحی تلاش می‌کند سفارش غذا سریع بماند اما اطلاعات مهم مثل قیمت، تخفیف، وضعیت موجودی و هویت رستوران هم واضح باشد. جزئیاتی مثل کنترل تعداد، برچسب تخفیف، وضعیت غیرفعال و بازخورد تایید برای کاهش تردید و قابل پیش‌بینی شدن مسیر سفارش طراحی شده‌اند.',
-    },
-  },
-  {
     id: 'ops-orders',
     tone: 'green',
     image: '/projects/seed-ordering.jpg',
@@ -279,41 +255,28 @@ const projects = [
     },
   },
   {
-    id: 'analytics',
-    tone: 'green',
-    image: '/projects/seed-sales.jpg',
-    images: ['/projects/seed-sales.jpg', '/projects/seed-ordering.jpg'],
-    title: { en: 'Sales Analytics & Reports', fa: 'گزارش فروش و تحلیل سفارش' },
-    category: {
-      en: 'Dashboard / Management systems',
-      fa: 'داشبورد / سیستم مدیریتی',
-    },
-    description: {
-      en: 'A reporting view with date range selection, chart comparison, total sales, order outcomes, and history access for managers.',
-      fa: 'نمای گزارش‌گیری با انتخاب بازه زمانی، مقایسه نموداری، فروش کل، وضعیت سفارش‌ها و دسترسی به تاریخچه برای مدیران.',
-    },
-    detail: {
-      en: 'The reporting screen turns daily operational data into clear decisions. Instead of overwhelming managers with dense analytics, it highlights the most useful questions: how much was sold, what changed across days, and how many orders were delivered, cancelled, rejected, or expired. The visual hierarchy keeps the report readable on mobile while preserving enough detail for business review.',
-      fa: 'صفحه گزارش‌گیری داده‌های روزانه را به تصمیم‌های قابل خواندن تبدیل می‌کند. به‌جای شلوغ‌کردن صفحه با تحلیل‌های سنگین، روی سوال‌های مهم مدیر تمرکز دارد: چقدر فروش داشتیم، روند روزها چه تغییری کرده و چند سفارش تحویل، لغو، رد یا منقضی شده است. سلسله‌مراتب بصری در موبایل خوانایی را حفظ می‌کند و همچنان برای بررسی کسب‌وکار جزئیات کافی دارد.',
-    },
-  },
-  {
-    id: 'delivery',
+    id: 'storefront',
     tone: 'orange',
-    image: '/projects/seed-delivery.jpg',
-    images: ['/projects/seed-delivery.jpg', '/projects/seed-awaiting-approval.jpg'],
-    title: { en: 'Delivery Zones & Service Rules', fa: 'محدوده ارسال و قوانین سرویس‌دهی' },
+    image: '/projects/seed-products.jpg',
+    images: [
+      '/projects/seed-products.jpg',
+      '/projects/seed-product-details.jpg',
+      '/projects/seed-shopping-cart.jpg',
+      '/projects/seed-order-confirmation.jpg',
+      '/projects/seed-login-register.jpg',
+    ],
+    title: { en: 'Restaurant Storefront & Ordering', fa: 'فروشگاه و سفارش‌گیری رستوران' },
     category: {
       en: 'Store / E-commerce systems',
       fa: 'سیستم فروشگاهی / سفارش آنلاین',
     },
     description: {
-      en: 'Map-based configuration for delivery areas, active status, fees, service boundaries, and approval steps.',
-      fa: 'تنظیم مبتنی بر نقشه برای محدوده ارسال، وضعیت فعال، هزینه، مرز سرویس‌دهی و مراحل تایید.',
+      en: 'A mobile-first storefront for restaurants with product discovery, details, cart flow, confirmation, login, discounts, and bottom navigation.',
+      fa: 'فروشگاه موبایل‌محور برای رستوران با کشف محصول، جزئیات، سبد خرید، تایید سفارش، ورود، تخفیف و ناوبری پایین.',
     },
     detail: {
-      en: 'Delivery configuration is usually a complex spatial task, so the design makes the boundary visible first and moves secondary details into compact cards. Fee, active state, guide access, and the continuation action are kept close to the map. This helps store owners understand where they deliver and how much the customer will pay before the rule goes live.',
-      fa: 'تنظیم ارسال معمولا یک کار مکانی پیچیده است، بنابراین طراحی ابتدا مرز محدوده را قابل مشاهده می‌کند و جزئیات ثانویه را داخل کارت‌های فشرده می‌گذارد. هزینه، وضعیت فعال، راهنما و اقدام ادامه نزدیک نقشه قرار گرفته‌اند تا صاحب فروشگاه پیش از فعال‌سازی قانون بداند کجا سرویس می‌دهد و مشتری چه هزینه‌ای پرداخت می‌کند.',
+      en: 'This flow covers the customer side of Dootar: browsing categories, reading product details, adding and removing items, entering notes, reviewing final payment, and receiving order confirmation. The design balances quick food ordering with enough context for price, discount, inventory state, and restaurant identity. Small interaction details such as quantity controls, discount labels, disabled states, and confirmation feedback were designed to reduce hesitation and make the ordering path feel predictable.',
+      fa: 'این جریان سمت مشتری دوتر را پوشش می‌دهد: مرور دسته‌بندی‌ها، مشاهده جزئیات محصول، افزودن و حذف آیتم‌ها، ثبت توضیحات، بررسی مبلغ نهایی و دریافت تایید سفارش. طراحی تلاش می‌کند سفارش غذا سریع بماند اما اطلاعات مهم مثل قیمت، تخفیف، وضعیت موجودی و هویت رستوران هم واضح باشد. جزئیاتی مثل کنترل تعداد، برچسب تخفیف، وضعیت غیرفعال و بازخورد تایید برای کاهش تردید و قابل پیش‌بینی شدن مسیر سفارش طراحی شده‌اند.',
     },
   },
   {
@@ -584,35 +547,17 @@ function App() {
             <p className="mt-5 text-lg leading-8 text-slate-400">{t.projectsLead}</p>
           </motion.div>
 
-          <div className="mt-12 grid gap-12">
-            {projectGroups.map((group) => {
-              const groupedProjects = projects.filter((project) => project.tone === group.tone)
-
-              return (
-                <motion.div key={group.tone} {...fadeUp(group.tone === 'orange' ? 0.08 : 0.2)}>
-                  <div className="mb-5 flex items-center gap-3">
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full ${
-                        group.tone === 'orange' ? 'bg-citrus shadow-orange' : 'bg-signal shadow-green'
-                      }`}
-                    />
-                    <h3 className="text-xl font-bold text-white">{t[group.labelKey]}</h3>
-                  </div>
-                  <div className="grid gap-5 md:grid-cols-2">
-                    {groupedProjects.map((project, index) => (
-                      <ProjectCard
-                        key={project.id}
-                        index={index}
-                        lang={lang}
-                        placeholder={t.placeholder}
-                        project={project}
-                        onOpen={() => setActiveProject(project)}
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-              )
-            })}
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
+            {projects.map((project, index) => (
+              <ProjectCard
+                key={project.id}
+                index={index}
+                lang={lang}
+                placeholder={t.placeholder}
+                project={project}
+                onOpen={() => setActiveProject(project)}
+              />
+            ))}
           </div>
         </section>
 
@@ -859,13 +804,9 @@ function ProjectCard({ project, lang, index, placeholder, onOpen }) {
         style={{ transformStyle: 'preserve-3d' }}
         className="w-full h-full"
       >
-        <div className="aspect-[16/11] overflow-hidden bg-white/[0.03]" style={{ transform: 'translateZ(30px)' }}>
+        <div className="relative aspect-[16/11] bg-white/[0.03]" style={{ transform: 'translateZ(30px)' }}>
           {project.image ? (
-            <img
-              src={project.image}
-              alt=""
-              className="h-full w-full object-cover object-top opacity-90 transition duration-500 group-hover:scale-[1.035] group-hover:opacity-100"
-            />
+            <ScrollableImageFrame src={project.image} lang={lang} className="opacity-90 transition duration-500 group-hover:opacity-100" />
           ) : (
             <PlaceholderPreview label={placeholder} />
           )}
@@ -896,6 +837,14 @@ function ProjectCard({ project, lang, index, placeholder, onOpen }) {
   )
 }
 
+function ScrollableImageFrame({ src, lang, className = '', modal = false }) {
+  return (
+    <div className="scrollable-image-frame">
+      <img src={src} alt="" className={`w-full h-full object-contain ${className}`} />
+    </div>
+  )
+}
+
 function ProjectModal({ project, lang, closeLabel, galleryLabel, placeholder, onClose }) {
   const [selectedIndex, setSelectedIndex] = useState(0)
 
@@ -909,6 +858,7 @@ function ProjectModal({ project, lang, closeLabel, galleryLabel, placeholder, on
   const safeIndex = Math.min(selectedIndex, images.length - 1)
   const activeImage = images[safeIndex] ?? null
   const scrollClass = project.tone === 'orange' ? 'scrollbar-orange' : 'scrollbar-green'
+  const otherImages = images.filter((_, i) => i !== safeIndex)
 
   return (
     <AnimatePresence>
@@ -942,19 +892,20 @@ function ProjectModal({ project, lang, closeLabel, galleryLabel, placeholder, on
           </div>
           <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
             <div className={`max-h-[74vh] overflow-auto bg-black/30 p-4 ${scrollClass}`}>
-              <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] aspect-[16/11]">
+              {/* Main image - fixed frame with scrollable content */}
+              <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] modal-image-wrapper">
                 <AnimatePresence mode="wait">
                   {activeImage ? (
-                    <motion.img
+                    <motion.div
                       key={activeImage}
-                      src={activeImage}
-                      alt=""
                       initial={{ opacity: 0, scale: 0.97 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 1.03 }}
                       transition={{ duration: 0.3, ease: 'easeInOut' }}
-                      className="absolute inset-0 h-full w-full object-cover object-top"
-                    />
+                      className="relative modal-image-wrapper"
+                    >
+                      <ScrollableImageFrame src={activeImage} lang={lang} modal />
+                    </motion.div>
                   ) : (
                     <motion.div
                       key="placeholder"
@@ -962,32 +913,39 @@ function ProjectModal({ project, lang, closeLabel, galleryLabel, placeholder, on
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="absolute inset-0 h-full w-full"
+                      className="aspect-[16/11]"
                     >
                       <PlaceholderPreview label={placeholder} />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
-              <div className="mt-4 grid grid-cols-4 gap-3">
-                {images.map((image, index) => (
-                  <button
-                    key={image ?? project.id}
-                    type="button"
-                    onClick={() => setSelectedIndex(index)}
-                    className={`aspect-[4/5] overflow-hidden rounded-xl border bg-white/[0.03] transition ${
-                      safeIndex === index ? 'border-neon/70' : 'border-white/10 hover:border-white/30'
-                    }`}
-                    aria-label={`${galleryLabel} ${index + 1}`}
-                  >
-                    {image ? (
-                      <img src={image} alt="" className="h-full w-full object-cover object-top" />
-                    ) : (
-                      <PlaceholderPreview label="" small />
-                    )}
-                  </button>
-                ))}
-              </div>
+
+              {/* Other images capsule strip */}
+              {otherImages.length > 0 && (
+                <div className="capsule-strip mt-4">
+                  <div className="capsule-strip-inner">
+                    {images.map((image, index) => {
+                      if (index === safeIndex) return null
+                      return (
+                        <button
+                          key={image ?? `${project.id}-${index}`}
+                          type="button"
+                          onClick={() => setSelectedIndex(index)}
+                          className="capsule-thumb"
+                          aria-label={`${galleryLabel} ${index + 1}`}
+                        >
+                          {image ? (
+                            <img src={image} alt="" className="h-full w-full object-cover object-top" />
+                          ) : (
+                            <PlaceholderPreview label="" small />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <div className={`overflow-auto p-6 sm:p-8 ${scrollClass}`}>
               <p className="text-sm font-semibold text-neon">{galleryLabel}</p>
