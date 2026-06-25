@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
@@ -24,6 +24,36 @@ import {
   Sparkles,
   X,
 } from 'lucide-react'
+
+function Magnetic({ children }) {
+  const ref = useRef(null)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+
+  const handleMouseMove = (e) => {
+    const { clientX, clientY } = e
+    if (!ref.current) return
+    const { left, top, width, height } = ref.current.getBoundingClientRect()
+    const x = clientX - (left + width / 2)
+    const y = clientY - (top + height / 2)
+    setPosition({ x: x * 0.3, y: y * 0.3 })
+  }
+
+  const handleMouseLeave = () => {
+    setPosition({ x: 0, y: 0 })
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      animate={{ x: position.x, y: position.y }}
+      transition={{ type: 'spring', stiffness: 150, damping: 15, mass: 0.1 }}
+    >
+      {children}
+    </motion.div>
+  )
+}
 
 const contactInfo = {
   email: 'hadiheydari.business@gmail.com',
@@ -69,6 +99,8 @@ const content = {
     birthLabel: 'Birth year',
     social: 'Social links',
     placeholder: 'Preview image will be added later',
+    copiedSuccess: 'Copied!',
+    clickToCopy: 'Click to copy',
   },
   fa: {
     nav: ['نمونه‌کارها', 'تماس'],
@@ -105,6 +137,8 @@ const content = {
     birthLabel: 'سال تولد',
     social: 'لینک‌ها',
     placeholder: 'تصویر پیش‌نمایش بعدا اضافه می‌شود',
+    copiedSuccess: 'کپی شد!',
+    clickToCopy: 'کپی ایمیل',
   },
 }
 
@@ -329,9 +363,19 @@ function App() {
   const t = content[lang]
   const isFa = lang === 'fa'
 
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      document.documentElement.style.setProperty('--mouse-x', `${e.clientX}px`)
+      document.documentElement.style.setProperty('--mouse-y', `${e.clientY}px`)
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [])
+
   return (
     <div dir={t.dir} className="relative min-h-screen overflow-hidden bg-ink text-slate-50">
       <div className="noise pointer-events-none fixed inset-0 opacity-45" />
+      <div className="glow-spotlight" />
 
       <header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-ink/70 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
@@ -349,15 +393,17 @@ function App() {
               </a>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => setLang(isFa ? 'en' : 'fa')}
-            className="glass inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-neon/50 hover:text-white"
-            aria-label="Toggle language"
-          >
-            <Languages size={15} />
-            {isFa ? 'EN' : 'FA'}
-          </button>
+          <Magnetic>
+            <button
+              type="button"
+              onClick={() => setLang(isFa ? 'en' : 'fa')}
+              className="glass inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-neon/50 hover:text-white"
+              aria-label="Toggle language"
+            >
+              <Languages size={15} />
+              {isFa ? 'EN' : 'FA'}
+            </button>
+          </Magnetic>
         </nav>
         <motion.div
           aria-hidden="true"
@@ -367,7 +413,15 @@ function App() {
         />
       </header>
 
-      <main className="relative z-10 mx-auto max-w-6xl px-5">
+      <AnimatePresence mode="wait">
+        <motion.main
+          key={lang}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.35, ease: softEase }}
+          className="relative z-10 mx-auto max-w-6xl px-5"
+        >
         <section id="home" className="flex min-h-screen items-center pb-20 pt-32">
           <div className="grid w-full gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
             <motion.div
@@ -395,20 +449,24 @@ function App() {
                 {t.intro}
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href="#work"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:bg-neon"
-                >
-                  {t.ctaWork}
-                  <ArrowRight size={16} className={isFa ? 'rotate-180' : ''} />
-                </a>
-                <a
-                  href="#contact"
-                  className="glass inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:border-neon/50"
-                >
-                  {t.ctaContact}
-                  <Mail size={16} />
-                </a>
+                <Magnetic>
+                  <a
+                    href="#work"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:bg-neon"
+                  >
+                    {t.ctaWork}
+                    <ArrowRight size={16} className={isFa ? 'rotate-180' : ''} />
+                  </a>
+                </Magnetic>
+                <Magnetic>
+                  <a
+                    href="#contact"
+                    className="glass inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:border-neon/50"
+                  >
+                    {t.ctaContact}
+                    <Mail size={16} />
+                  </a>
+                </Magnetic>
               </div>
             </motion.div>
 
@@ -426,21 +484,32 @@ function App() {
                   <p className="mt-3 text-sm leading-6 text-slate-400">{t.timelineNote}</p>
                 </div>
               </div>
-              <div className="mt-7 grid gap-3">
+              <div className="relative mt-7 space-y-6 ltr:pl-6 rtl:pr-6">
+                {/* Continuous glowing path line */}
+                <div className="absolute top-3 bottom-3 w-[1px] bg-gradient-to-b from-neon via-neon/30 to-transparent ltr:left-[7px] rtl:right-[7px]" />
+                
                 {experiences.map((experience, index) => (
                   <motion.div
                     key={experience.company.en}
-                    className="relative rounded-2xl border border-white/10 bg-black/25 p-4"
+                    onClick={() => {
+                      const el = document.getElementById(`exp-${index}`)
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                      }
+                    }}
+                    className="group relative cursor-pointer rounded-2xl border border-white/10 bg-black/25 p-4 transition-all duration-300 hover:border-neon/30 hover:bg-neon/[0.02]"
                     initial={{ opacity: 0, x: isFa ? 12 : -12, filter: 'blur(10px)' }}
                     animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
                     transition={revealTransition(0.28 + index * 0.12, 0.9)}
                   >
+                    {/* Centered dot on the timeline path */}
+                    <div className="absolute top-[26px] flex h-5 w-5 items-center justify-center rounded-full border border-neon bg-ink transition-all duration-300 group-hover:scale-125 group-hover:shadow-[0_0_10px_rgba(125,211,252,0.6)] ltr:-left-[27px] rtl:-right-[27px]">
+                      <div className="h-1.5 w-1.5 rounded-full bg-neon animate-pulse-slow" />
+                    </div>
+                    
                     <div className="flex gap-4">
-                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-neon/30 bg-neon/10 text-sm font-bold text-neon">
-                        {index + 1}
-                      </div>
                       <div>
-                        <p className="font-bold text-white">{experience.role[lang]}</p>
+                        <p className="font-bold text-white group-hover:text-neon transition-colors duration-300">{experience.role[lang]}</p>
                         <p className="mt-1 text-sm font-semibold text-neon">
                           {experience.company[lang]}
                         </p>
@@ -469,7 +538,12 @@ function App() {
             <div className="grid gap-5">
               <div className="grid gap-5">
                 {experiences.map((experience, index) => (
-                  <motion.div key={experience.company.en} {...fadeUp(0.1 + index * 0.12)}>
+                  <motion.div
+                    key={experience.company.en}
+                    id={`exp-${index}`}
+                    className="scroll-mt-24"
+                    {...fadeUp(0.1 + index * 0.12)}
+                  >
                     <ExperienceCard experience={experience} lang={lang} />
                   </motion.div>
                 ))}
@@ -482,13 +556,15 @@ function App() {
                     const Icon = skillIcons[skill.icon]
 
                     return (
-                      <div
+                      <motion.div
                         key={skill.en}
-                        className="flex items-center gap-2 rounded-full border border-white/10 px-4 py-3 text-sm text-slate-300"
+                        whileHover={{ y: -3, scale: 1.02 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                        className="flex items-center gap-2 rounded-full border border-white/10 px-4 py-3 text-sm text-slate-300 transition-colors duration-300 hover:border-neon/30 hover:bg-neon/[0.02] hover:text-white cursor-default"
                       >
                         <Icon size={16} className="shrink-0 text-neon" />
                         {skill[lang]}
-                      </div>
+                      </motion.div>
                     )
                   })}
                 </div>
@@ -562,6 +638,9 @@ function App() {
                 icon={<Mail size={18} className="text-neon" />}
                 label={t.emailLabel}
                 value={contactInfo.email}
+                isEmail={true}
+                copySuccessLabel={t.copiedSuccess}
+                clickToCopyLabel={t.clickToCopy}
               />
               <ContactRow
                 href={`tel:${contactInfo.phoneEn}`}
@@ -594,7 +673,8 @@ function App() {
             </div>
           </motion.div>
         </section>
-      </main>
+        </motion.main>
+      </AnimatePresence>
 
       <ProjectModal
         project={activeProject}
@@ -654,11 +734,24 @@ function ExperienceCard({ experience, lang }) {
   )
 }
 
-function ContactRow({ href, icon, label, value }) {
+function ContactRow({ href, icon, label, value, isEmail = false, copySuccessLabel = '', clickToCopyLabel = '' }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = (e) => {
+    if (isEmail) {
+      e.preventDefault()
+      navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   return (
-    <a
-      href={href}
-      className="group flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-5 py-4 text-sm font-semibold text-white transition hover:border-neon/50"
+    <div
+      onClick={handleCopy}
+      className={`group relative flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-5 py-4 text-sm font-semibold text-white transition hover:border-neon/50 ${
+        isEmail ? 'cursor-pointer select-none' : ''
+      }`}
     >
       <span className="inline-flex min-w-0 items-center gap-3">
         {icon}
@@ -667,8 +760,46 @@ function ContactRow({ href, icon, label, value }) {
           <span className="block break-all">{value}</span>
         </span>
       </span>
-      <Send size={16} className="shrink-0 transition group-hover:translate-x-1" />
-    </a>
+      {isEmail ? (
+        <div className="flex items-center gap-3">
+          <AnimatePresence mode="wait">
+            {copied ? (
+              <motion.span
+                key="copied"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="text-xs text-signal font-bold"
+              >
+                {copySuccessLabel}
+              </motion.span>
+            ) : (
+              <motion.span
+                key="copy"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-xs text-slate-500 font-normal group-hover:text-neon"
+              >
+                {clickToCopyLabel}
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <a
+            href={href}
+            onClick={(e) => e.stopPropagation()}
+            className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
+            title="Send Email"
+          >
+            <Send size={16} />
+          </a>
+        </div>
+      ) : (
+        <a href={href} className="flex items-center">
+          <Send size={16} className="shrink-0 transition group-hover:translate-x-1" />
+        </a>
+      )}
+    </div>
   )
 }
 
@@ -685,51 +816,92 @@ function ProjectCard({ project, lang, index, placeholder, onOpen }) {
   const glow = isGreen ? 'hover:shadow-green' : 'hover:shadow-orange'
   const color = isGreen ? 'text-signal border-signal/25 bg-signal/10' : 'text-citrus border-citrus/25 bg-citrus/10'
 
+  const [rotateX, setRotateX] = useState(0)
+  const [rotateY, setRotateY] = useState(0)
+
+  const handleMouseMove = (e) => {
+    const card = e.currentTarget
+    const rect = card.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+    
+    // Smooth 3D tilt calculations (capped at max 6 degrees)
+    const rX = ((y - centerY) / centerY) * -5
+    const rY = ((x - centerX) / centerX) * 5
+    
+    setRotateX(rX)
+    setRotateY(rY)
+  }
+
+  const handleMouseLeave = () => {
+    setRotateX(0)
+    setRotateY(0)
+  }
+
   return (
     <motion.button
       type="button"
       onClick={onOpen}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       {...fadeUp(index * 0.1)}
-      className={`group glass overflow-hidden rounded-[1.5rem] text-start transition duration-300 hover:-translate-y-1 hover:border-white/20 ${glow}`}
+      style={{
+        transformStyle: 'preserve-3d',
+        perspective: 1000,
+      }}
+      className={`group glass overflow-hidden rounded-[1.5rem] text-start transition duration-300 hover:border-white/20 ${glow}`}
     >
-      <div className="aspect-[16/11] overflow-hidden bg-white/[0.03]">
-        {project.image ? (
-          <img
-            src={project.image}
-            alt=""
-            className="h-full w-full object-cover object-top opacity-90 transition duration-500 group-hover:scale-[1.035] group-hover:opacity-100"
-          />
-        ) : (
-          <PlaceholderPreview label={placeholder} />
-        )}
-      </div>
-      <div className="p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${color}`}>
-            {project.category[lang]}
-          </span>
-          {project.images.length > 0 && (
-            <span className="inline-flex rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-slate-400">
-              {project.images.length} {content[lang].galleryLabel}
-            </span>
+      <motion.div
+        animate={{ rotateX, rotateY }}
+        transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+        style={{ transformStyle: 'preserve-3d' }}
+        className="w-full h-full"
+      >
+        <div className="aspect-[16/11] overflow-hidden bg-white/[0.03]" style={{ transform: 'translateZ(30px)' }}>
+          {project.image ? (
+            <img
+              src={project.image}
+              alt=""
+              className="h-full w-full object-cover object-top opacity-90 transition duration-500 group-hover:scale-[1.035] group-hover:opacity-100"
+            />
+          ) : (
+            <PlaceholderPreview label={placeholder} />
           )}
         </div>
-        <div className="mt-5 flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-xl font-bold text-white">{project.title[lang]}</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-400">
-              {project.description[lang]}
-            </p>
+        <div className="p-5 sm:p-6" style={{ transform: 'translateZ(20px)' }}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${color}`}>
+              {project.category[lang]}
+            </span>
+            {project.images.length > 0 && (
+              <span className="inline-flex rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-slate-400">
+                {project.images.length} {content[lang].galleryLabel}
+              </span>
+            )}
           </div>
-          <BriefcaseBusiness className="mt-1 shrink-0 text-slate-500 transition group-hover:text-neon" size={21} />
+          <div className="mt-5 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-white">{project.title[lang]}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                {project.description[lang]}
+              </p>
+            </div>
+            <BriefcaseBusiness className="mt-1 shrink-0 text-slate-500 transition group-hover:text-neon" size={21} />
+          </div>
         </div>
-      </div>
+      </motion.div>
     </motion.button>
   )
 }
 
 function ProjectModal({ project, lang, closeLabel, galleryLabel, placeholder, onClose }) {
   const [selectedIndex, setSelectedIndex] = useState(0)
+
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [project?.id])
 
   if (!project) return null
 
@@ -770,14 +942,32 @@ function ProjectModal({ project, lang, closeLabel, galleryLabel, placeholder, on
           </div>
           <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
             <div className={`max-h-[74vh] overflow-auto bg-black/30 p-4 ${scrollClass}`}>
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-                {activeImage ? (
-                  <img src={activeImage} alt="" className="w-full object-cover object-top" />
-                ) : (
-                  <div className="aspect-[4/5]">
-                    <PlaceholderPreview label={placeholder} />
-                  </div>
-                )}
+              <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] aspect-[16/11]">
+                <AnimatePresence mode="wait">
+                  {activeImage ? (
+                    <motion.img
+                      key={activeImage}
+                      src={activeImage}
+                      alt=""
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.03 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className="absolute inset-0 h-full w-full object-cover object-top"
+                    />
+                  ) : (
+                    <motion.div
+                      key="placeholder"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="absolute inset-0 h-full w-full"
+                    >
+                      <PlaceholderPreview label={placeholder} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
               <div className="mt-4 grid grid-cols-4 gap-3">
                 {images.map((image, index) => (
