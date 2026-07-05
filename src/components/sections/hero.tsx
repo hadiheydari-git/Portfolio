@@ -68,11 +68,11 @@ export function Hero() {
           </div>
 
           {/* Floating badges — slightly outside image on all screen sizes */}
-          <div className={cn("absolute -top-4 flex items-center gap-1.5 rounded-2xl border border-black/10 bg-card/90 backdrop-blur-sm px-3 py-2 text-xs font-medium shadow-card dark:border-white/10 lg:bg-card lg:backdrop-blur-none", locale === "en" ? "-left-4" : "-right-4")}>
+          <div className={cn("absolute -top-4 flex items-center gap-1.5 rounded-2xl border border-black/10 bg-card/90 backdrop-blur-sm px-3 py-2 text-xs font-medium shadow-card dark:border-white/10 lg:bg-card lg:backdrop-blur-none animate-float", locale === "en" ? "-left-4" : "-right-4")}>
             <span className="text-foreground">✦</span>
             {t("hero.badgeDesignSystems")}
           </div>
-          <div className={cn("absolute -bottom-4 flex items-center gap-1.5 rounded-2xl border border-black/10 bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-card dark:border-white/10", locale === "en" ? "-right-4" : "-left-4")}>
+          <div className={cn("absolute -bottom-4 flex items-center gap-1.5 rounded-2xl border border-black/10 bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-card dark:border-white/10 animate-float animate-float-delay", locale === "en" ? "-right-4" : "-left-4")}>
             <span>✦</span>
             {t("hero.badgeProductDesign")}
           </div>

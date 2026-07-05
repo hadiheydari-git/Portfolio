@@ -63,10 +63,12 @@ const itemVariants: Variants = {
 
 const coverMediaVariants: Variants = {
   hidden: {
+    opacity: 0,
     filter: "blur(24px) brightness(0.3)",
     scale: 1.08,
   },
   show: {
+    opacity: 1,
     filter: "blur(0px) brightness(1)",
     scale: 1,
     transition: {
@@ -88,13 +90,22 @@ const coverMediaVariantsReduced: Variants = {
 export function ProjectModal({ project, open, onOpenChange }: Props) {
   const { t, tt, locale } = useLanguage();
   const prefersReducedMotion = useReducedMotion();
+  // Controls when the interior staggered content should begin animating.
+  // We wait for the container's entrance animation to finish so child
+  // animations don't try to start during a delayed container mount.
+  const [contentAnimate, setContentAnimate] = React.useState(
+    () => prefersReducedMotion
+  );
+  // Timer ref used to delay starting child animations until after the
+  // container's entrance animation completes (handles slow-first-open).
+  const parentAnimationTimerRef = React.useRef<number | null>(null);
   const [lightboxImg, setLightboxImg] = React.useState<GalleryImage | null>(null);
   const lightboxIndex = lightboxImg && project ? project.gallery.indexOf(lightboxImg) : -1;
   const lightboxTotal = project?.gallery.length ?? 0;
   const isDevSolutions = project?.id === "dev-solutions";
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const imageWrapperRef = React.useRef<HTMLDivElement>(null);
-  const hideTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const hideTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks the pointer-down position on the lightbox overlay so we can
   // distinguish a real tap (< 8px movement → close) from a touch-drag
   // (≥ 8px movement → do nothing, let the browser scroll the image).
@@ -151,10 +162,25 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         setIsImgHovered(false);
         setLightboxImgLoaded(false);
         setLightboxReady(false);
-        clearTimeout(hideTimerRef.current);
+        if (hideTimerRef.current) {
+          clearTimeout(hideTimerRef.current);
+        }
       });
     }
   }, [open]);
+
+  // Reset content animation state whenever the modal opens/closes.
+  React.useEffect(() => {
+    if (open) {
+      setContentAnimate(prefersReducedMotion);
+    } else {
+      setContentAnimate(false);
+      if (parentAnimationTimerRef.current) {
+        clearTimeout(parentAnimationTimerRef.current);
+        parentAnimationTimerRef.current = null;
+      }
+    }
+  }, [open, prefersReducedMotion]);
 
   // Per-slide reset: when the displayed image changes, reset the
   // per-image loaded flag (so the skeleton shows for the new image)
@@ -173,8 +199,14 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     requestAnimationFrame(() => {
       setLightboxImgLoaded(false);
     });
-    clearTimeout(hideTimerRef.current);
-    return () => clearTimeout(hideTimerRef.current);
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
   }, [lightboxImg?.src]);
 
   // Keyboard nav inside lightbox
@@ -230,12 +262,31 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
             <DialogPrimitive.Content
               asChild
               onPointerDownOutside={lightboxImg ? (e) => e.preventDefault() : undefined}
+              onInteractOutside={lightboxImg ? (e) => e.preventDefault() : undefined}
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97, y: 8 }}
                 transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                // When the parent entrance animation completes we trigger
+                // the inner staggered content to animate. For slow or
+                // delayed first-open scenarios we wait a short fixed
+                // buffer (parent animation duration + small margin)
+                // to avoid child animations running too quickly.
+                onAnimationComplete={() => {
+                  if (prefersReducedMotion) {
+                    setContentAnimate(true);
+                    return;
+                  }
+                  if (parentAnimationTimerRef.current) {
+                    clearTimeout(parentAnimationTimerRef.current);
+                  }
+                  parentAnimationTimerRef.current = window.setTimeout(() => {
+                    setContentAnimate(true);
+                    parentAnimationTimerRef.current = null;
+                  }, 40); // small buffer to keep entrance snappy
+                }}
                 style={{ borderWidth: 0 }}
                 className={cn(
                   "fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-3xl flex-col rounded-t-[2rem] sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[2rem]",
@@ -295,8 +346,10 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         />
                       ) : (
                         <SmartImage
+                          key={`${project.id}-cover`}
                           src={project.cover}
                           alt={tt(project.title)}
+                          critical
                           className="h-full w-full"
                         />
                       )}
@@ -307,7 +360,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   <motion.div
                     variants={containerVariants}
                     initial="hidden"
-                    animate="show"
+                    animate={contentAnimate ? "show" : "hidden"}
                     className="flex flex-col gap-8 p-6 sm:p-8"
                   >
                     {/* Header */}
@@ -522,6 +575,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
               // any element not inside the modal's scroll lock group.
               onTouchMoveCapture={(e) => e.stopPropagation()}
               onPointerDown={(e) => {
+                e.stopPropagation();
                 // Record start position so we can distinguish a tap
                 // (small movement) from a drag (intended to scroll).
                 pointerDownRef.current = {
@@ -537,6 +591,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                 };
               }}
               onPointerUp={(e) => {
+                e.stopPropagation();
                 const start = pointerDownRef.current;
                 pointerDownRef.current = null;
                 if (!start) return;
@@ -573,18 +628,24 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     // Show X on mouse enter / move; auto-hide after 1s of
                     // no movement. On mouse leave, hide immediately.
                     onMouseEnter={() => {
-                      clearTimeout(hideTimerRef.current);
+                      if (hideTimerRef.current) {
+                        clearTimeout(hideTimerRef.current);
+                      }
                       setIsImgHovered(true);
                       hideTimerRef.current = setTimeout(() => setIsImgHovered(false), 1000);
                     }}
                     onMouseMove={() => {
                       // Every mouse movement resets the 1s auto-hide timer.
-                      clearTimeout(hideTimerRef.current);
+                      if (hideTimerRef.current) {
+                        clearTimeout(hideTimerRef.current);
+                      }
                       setIsImgHovered(true);
                       hideTimerRef.current = setTimeout(() => setIsImgHovered(false), 1000);
                     }}
                     onMouseLeave={() => {
-                      clearTimeout(hideTimerRef.current);
+                      if (hideTimerRef.current) {
+                        clearTimeout(hideTimerRef.current);
+                      }
                       setIsImgHovered(false);
                     }}
                   >

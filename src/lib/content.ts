@@ -592,7 +592,7 @@ export const skillGroups: SkillGroup[] = [
     items: [
       { fa: "فیگما", en: "Figma" },
       { fa: "فیگ‌جم", en: "FigJam" },
-      { fa: "پروتویی", en: "ProtoPie" },
+      { fa: "پروتوتایپ", en: "ProtoPie" },
       { fa: "نوشن", en: "Notion" },
       { fa: "فتوشاپ", en: "Photoshop" },
       { fa: "ایلاستریتور", en: "Illustrator" },

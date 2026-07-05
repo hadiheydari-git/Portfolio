@@ -509,6 +509,25 @@ body::-webkit-scrollbar-thumb:hover {
   background: color-mix(in oklch, var(--muted-foreground) 70%, transparent);
 }
 
+/* Floating Pulse — hero badge motion using only translateY for GPU compositing.
+   Top badge starts immediately; bottom badge begins delayed by 1.5s to stay out of phase.
+   This animation is always active and does not use a persistent will-change hint. */
+@keyframes floating-pulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-float {
+  animation: floating-pulse 6s ease-in-out infinite;
+}
+.animate-float-delay {
+  animation-delay: 1.5s;
+}
+
 /* Mafia Master "Vibe Coding" badge — soft 3-color gradient at ~6%
    opacity, slowly shifting via background-position only (no blur/filters).
    Scoped to the tiny badge pill so repaint cost stays negligible. */
