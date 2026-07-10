@@ -54,8 +54,27 @@ const BentoCard = React.memo(function BentoCard({
 
   const isFeature = lgCols >= 4;
 
+  // Responsive `sizes` for next/image — tell the optimizer the TRUE rendered
+  // width so it serves an appropriately-sized image. Previously this was a
+  // hardcoded "400px" desktop hint, which caused Next.js to serve ~828px-wide
+  // images for 4-column bento cards that actually render at ~792 CSS px
+  // (~1584 effective px on a 2× retina display) — the browser then upscaled
+  // ~1.9× and the cover looked blurry despite 4K–8K source files.
+  //
+  // Layout facts:
+  //   - Mobile (<640px): single column → card spans 100vw.
+  //   - Tablet (640–1023px): 6-col grid, card spans `smCols` of 6 → (smCols/6)×100vw.
+  //   - Desktop (≥1024px): 6-col grid inside an 80rem (1280px) container with
+  //     2.5rem padding each side → content ≈ 75rem. Card spans `lgCols` of 6 →
+  //     (lgCols/6)×75rem. We round up slightly to avoid under-serving.
+  const sizes = [
+    "(max-width: 640px) 100vw",
+    `(max-width: 1024px) ${(smCols / 6) * 100}vw`,
+    `${Math.ceil((lgCols / 6) * 75)}rem`,
+  ].join(", ");
+
   return (
-    <RevealItem className={cn(smClass, lgClass)}>
+    <RevealItem className={cn("relative", smClass, lgClass)}>
       <button
         type="button"
         onClick={handleClick}
@@ -70,7 +89,7 @@ const BentoCard = React.memo(function BentoCard({
           src={project.cover}
           alt={tt(project.title)}
           fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 66vw, 400px"
+          sizes={sizes}
           quality={80}
           loading="lazy"
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
@@ -93,30 +112,63 @@ const BentoCard = React.memo(function BentoCard({
           </div>
         )}
 
-        <div className="relative z-10 mt-auto flex flex-col gap-2 p-5 sm:p-6">
-          <h3
+        {/* Bottom content row — title/tagline on the right, "مشاهده" button
+            on the left, both sharing the SAME bottom padding so their baselines
+            align horizontally. The button uses a simple solid background with a
+            hover color swap (dark → white, text inverts). */}
+        <div className="relative z-10 mt-auto flex items-end justify-between gap-3 p-5 sm:p-6">
+          {/* Text block: title + tagline, anchored to the start (right in RTL,
+              left in LTR). Uses flex-col so title and tagline stack vertically. */}
+          <div className="flex flex-col gap-2">
+            <h3
+              className={cn(
+                "font-semibold tracking-tight text-balance text-white",
+                isFeature ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
+              )}
+            >
+              {tt(project.title)}
+            </h3>
+            <p className="line-clamp-2 max-w-md text-sm text-white/70">
+              {tt(project.tagline)}
+            </p>
+          </div>
+
+          {/* Glass button — sits at the opposite end (left in RTL, right in LTR).
+              Uses items-end on the parent so the button's BOTTOM aligns with the
+              tagline's BOTTOM (same bottom padding). pointer-events-none because
+              the outer card is already a <button>; group-hover drives the color.
+              Glass effect: semi-transparent bg + backdrop-blur + subtle inset
+              highlight, same recipe as the site header. */}
+          <div
+            role="presentation"
             className={cn(
-              "font-semibold tracking-tight text-balance text-white",
-              isFeature ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
+              "pointer-events-none inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-md backdrop-saturate-150 transition-colors duration-300 group-hover:bg-white/25 group-hover:text-white",
+              "[box-shadow:inset_0_1px_0_0_rgba(255,255,255,0.15)]"
             )}
           >
-            {tt(project.title)}
-          </h3>
-          <p className="line-clamp-2 max-w-md text-sm text-white/70">
-            {tt(project.tagline)}
-          </p>
-          <div className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-white/80 transition-colors group-hover:text-white">
             <span>{t("portfolio.viewProject")}</span>
             <ArrowUpRight
               className={cn(
-                "h-4 w-4 transition-transform duration-300",
-                locale === "fa" ? "-scale-x-100" : "",
-                "group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                "h-3.5 w-3.5",
+                locale === "fa" ? "-scale-x-100" : ""
               )}
             />
           </div>
         </div>
       </button>
+
+      {/* Anti-aliasing edge cover — masks the ~1px light artifact at rounded
+          corners and straight edges caused by overflow:hidden + border-radius.
+          Implementation: a hollow box (transparent center, opaque edges) using
+          a background-color matching the page bg.
+          IMPORTANT: We use background-color (NOT outline, NOT border) because
+          global CSS sets `* { outline-color: var(--ring) }` which some browsers
+          render visibly. background-color is never overridden by accessibility
+          styles and always renders the exact color we specify. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-px -right-[2px] -bottom-px -left-px z-10 rounded-[33px] border-0 outline-none [box-shadow:none] [background:transparent] before:absolute before:inset-0 before:rounded-[33px] before:shadow-[inset_0_0_0_4px_var(--background)] before:content-['']"
+      />
     </RevealItem>
   );
 });

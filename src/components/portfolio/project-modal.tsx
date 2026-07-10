@@ -1,14 +1,16 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion, type Variants } from "framer-motion";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, Check, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/components/providers/language-provider";
 import { SmartImage } from "@/components/ui/smart-image";
 import { ToolIcon } from "@/components/ui/tool-icon";
 import type { Project, ToolCategory, GalleryImage } from "@/lib/content";
+import { getResponsibilityIcon } from "@/lib/responsibility-icons";
 import { cn } from "@/lib/utils";
 
 /** Shared URL encoder — same logic as SmartImage so lightbox images
@@ -79,6 +81,18 @@ const coverMediaVariants: Variants = {
   },
 };
 
+// Post-reveal variant — used after the aperture animation completes.
+// Explicitly sets `filter: "none"` (NOT omitted) because framer-motion
+// does NOT clear properties that are absent from the new variant — it keeps
+// the last animated value. So we must explicitly override `filter` to "none"
+// to disable the filter pipeline (which otherwise stays active as
+// `blur(0px) brightness(1)` and can render with a hair of softness on some
+// Chromium versions). Also drops `scale` to avoid a persistent transform.
+const coverMediaVariantsDone: Variants = {
+  hidden: { opacity: 1, scale: 1, filter: "none" },
+  show: { opacity: 1, scale: 1, filter: "none" },
+};
+
 const coverMediaVariantsReduced: Variants = {
   hidden: { opacity: 0 },
   show: {
@@ -101,6 +115,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   );
   const [portalReady, setPortalReady] = React.useState(false);
   const [modalOpenKey, setModalOpenKey] = React.useState(0);
+  // When true, the cover aperture reveal has finished and we strip the
+  // `filter: blur(0px) brightness(1)` from the cover motion.div. Framer-motion
+  // re-applies variant values on re-render, so we can't just imperatively
+  // clear the inline style — instead we swap to a variant without `filter`
+  // once the animation is done, letting the browser render the cover at
+  // full native sharpness.
+  const [coverRevealDone, setCoverRevealDone] = React.useState(false);
   const openSequenceRef = React.useRef(0);
   // Timer ref used to delay starting child animations until after the
   // container's entrance animation completes (handles slow-first-open).
@@ -112,6 +133,12 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const imageWrapperRef = React.useRef<HTMLDivElement>(null);
   const hideTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to the modal panel motion.div — used in onAnimationComplete to clear
+  // the post-animation transform + willChange so the browser can demote the
+  // element off its GPU compositor layer. A persistent GPU layer with any
+  // non-`none` transform disables subpixel anti-aliasing for text in Chrome,
+  // producing the "subtle blur" effect users see on modal text.
+  const modalPanelRef = React.useRef<HTMLDivElement>(null);
   // Tracks the pointer-down position on the lightbox overlay so we can
   // distinguish a real tap (< 8px movement → close) from a touch-drag
   // (≥ 8px movement → do nothing, let the browser scroll the image).
@@ -181,6 +208,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       setPortalReady(false);
       setContentAnimate(false);
       setGalleryReady(false);
+      setCoverRevealDone(false);
       if (parentAnimationTimerRef.current) {
         clearTimeout(parentAnimationTimerRef.current);
         parentAnimationTimerRef.current = null;
@@ -299,9 +327,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
             >
               <motion.div
                 key={modalOpenKey}
-                initial={{ opacity: 0, scale: 0.96, y: 16 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
                 // When the parent entrance animation completes we trigger
                 // the inner staggered content to animate. For slow or
@@ -310,6 +338,20 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                 // to avoid child animations running too quickly.
                 onAnimationComplete={() => {
                   if (!open) return;
+                  // Clear the willChange hint + transform so the browser can
+                  // demote this element off its dedicated GPU compositor
+                  // layer. A persistent GPU layer with any non-`none`
+                  // transform disables subpixel anti-aliasing for text in
+                  // Chrome/Chromium, producing the "subtle blur" effect on
+                  // modal text. Clearing it post-animation restores crisp
+                  // text rendering. We animate only opacity + y (no scale)
+                  // so framer-motion leaves no lingering scale transform.
+                  const el = modalPanelRef.current;
+                  if (el && !prefersReducedMotion) {
+                    el.style.willChange = "auto";
+                    el.style.transform = "none";
+                    el.style.translate = "0 0";
+                  }
                   if (prefersReducedMotion) {
                     setContentAnimate(true);
                     setGalleryReady(true);
@@ -324,12 +366,24 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     parentAnimationTimerRef.current = null;
                   }, 40); // small buffer to keep entrance snappy
                 }}
-                style={{ borderWidth: 0, willChange: "transform, opacity" }}
+                ref={modalPanelRef}
+                // No willChange here — it's added only during the entrance
+                // animation via the initial/animate transition and cleared
+                // in onAnimationComplete to avoid a persistent GPU layer.
+                style={{ borderWidth: 0 }}
                 className={cn(
-                  "fixed inset-x-0 bottom-0 z-60 mx-auto flex w-full max-w-3xl flex-col rounded-t-[2rem] sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[2rem]",
+                  // Centering on desktop uses `sm:inset-0 sm:m-auto` which
+                  // sets margin:auto on all sides within a fixed inset-0
+                  // container — this centers the panel WITHOUT any transform.
+                  // Avoiding transform is critical: a persistent transform
+                  // (even translate(-50%,-50%)) promotes the element to a
+                  // GPU compositor layer, which disables subpixel AA for
+                  // text in Chrome and produces the "subtle blur" effect.
+                  // Mobile uses a bottom sheet (fixed bottom-0, no centering).
+                  "fixed inset-x-0 bottom-0 z-60 mx-auto flex w-full max-w-3xl flex-col rounded-t-[2rem] sm:inset-0 sm:bottom-auto sm:m-auto sm:max-h-[88vh] sm:rounded-[2rem]",
                   lightboxImg
                     ? "max-h-none overflow-hidden border-0 bg-transparent pointer-events-none"
-                    : "max-h-[92vh] overflow-hidden bg-background shadow-2xl sm:max-h-[88vh]"
+                    : "max-h-[92vh] overflow-hidden bg-background shadow-2xl"
                 )}
               >
                 {/* Close button — hidden when lightbox is open.
@@ -362,20 +416,59 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     style={{
                       backgroundColor: "var(--background)",
                       marginBottom: -2,
-                      transform: "translateZ(0)",
-                      backfaceVisibility: "hidden",
+                      // GPU layer promotion ONLY during the reveal animation.
+                      // After reveal (`coverRevealDone`), we drop translateZ(0) +
+                      // backfaceVisibility so the cover image renders on the
+                      // main compositor layer with full-quality resampling.
+                      // A persistent GPU layer causes Chromium to use bilinear
+                      // texture sampling for the heavily downscaled cover
+                      // (8K source → ~768px display, ~11× downscale), producing
+                      // a subtle blur. Same pattern used on the modal panel
+                      // itself (see onAnimationComplete on the panel above).
+                      ...(!coverRevealDone && !prefersReducedMotion
+                        ? { transform: "translateZ(0)", backfaceVisibility: "hidden" as const }
+                        : {}),
                     }}
                     className="relative aspect-[16/9] w-full overflow-hidden rounded-t-[2rem] sm:rounded-t-[2rem]"
                   >
                     <motion.div
-                      initial="hidden"
-                      animate="show"
-                      variants={
+                      // Use explicit initial/animate (not variants) so we
+                      // have full control over the post-animation state.
+                      // When `coverRevealDone` is true, we swap the animate
+                      // target to one with `filter: "none"` and `scale: 1` —
+                      // framer-motion applies these as inline styles, which
+                      // clears the animation-time blur/scale. The outer
+                      // wrapper (see above) drops its `translateZ(0)` +
+                      // `backfaceVisibility: hidden` once reveal is done so
+                      // the cover image renders on the main compositor layer
+                      // with full-quality resampling (avoids the subtle blur
+                      // that GPU-composited layers exhibit for heavily
+                      // downscaled images like our 8K source → 768px display).
+                      initial={
                         prefersReducedMotion
-                          ? coverMediaVariantsReduced
-                          : coverMediaVariants
+                          ? { opacity: 0 }
+                          : { opacity: 0, filter: "blur(24px) brightness(0.3)", scale: 1.08 }
                       }
-                      className="h-full w-full origin-center"
+                      animate={
+                        prefersReducedMotion
+                          ? { opacity: 1 }
+                          : coverRevealDone
+                            ? { opacity: 1, scale: 1, filter: "none" }
+                            : { opacity: 1, filter: "blur(0px) brightness(1)", scale: 1 }
+                      }
+                      transition={
+                        prefersReducedMotion
+                          ? { duration: 0.4, delay: 0.15 }
+                          : coverRevealDone
+                            ? { duration: 0 } // instant swap, no re-animation
+                            : { duration: 1.2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }
+                      }
+                      onAnimationComplete={() => {
+                        if (!prefersReducedMotion && !coverRevealDone) {
+                          setCoverRevealDone(true);
+                        }
+                      }}
+                      className="relative h-full w-full origin-center"
                     >
                       {isDevSolutions ? (
                         <video
@@ -387,12 +480,33 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           className="h-full w-full object-cover object-center"
                         />
                       ) : (
-                        <SmartImage
+                        /* next/image (NOT SmartImage) for the modal cover.
+                         *
+                         * Cover source images are 8K (8640×4320). A plain <img>
+                         * forces the browser to bilinearly downscale ~11×
+                         * (8640px → 768px display), producing a subtle blur.
+                         * next/image generates a srcset of pre-sized variants
+                         * so the browser receives an image close to display size.
+                         *
+                         * `sizes` tells the optimizer the true rendered width:
+                         * modal is max-w-3xl = 768px on desktop, full width on
+                         * mobile. On a 2× retina display, the browser picks the
+                         * 1920w variant (closest to 768×2 = 1536).
+                         *
+                         * The motion.div parent has `relative` in its className
+                         * so next/image `fill` (position: absolute) fills the
+                         * motion.div, ensuring the reveal animation's scale/blur
+                         * transform applies to the image. */
+                        <Image
                           key={`${project.id}-cover`}
                           src={project.cover}
                           alt={tt(project.title)}
-                          critical
-                          className="h-full w-full"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 768px"
+                          quality={80}
+                          priority
+                          draggable={false}
+                          className="object-cover"
                         />
                       )}
                     </motion.div>
@@ -443,14 +557,17 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           {tt(project.roleDescription)}
                         </p>
                         <ul className="mt-4 flex flex-col gap-2.5">
-                          {project.responsibilities.map((r, i) => (
-                            <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/75">
-                              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground/60">
-                                <Check className="h-3 w-3" />
-                              </span>
-                              <span className="leading-relaxed">{tt(r)}</span>
-                            </li>
-                          ))}
+                          {project.responsibilities.map((r, i) => {
+                            const Icon = getResponsibilityIcon(r.fa, r.en);
+                            return (
+                              <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/75">
+                                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground/60">
+                                  <Icon className="h-3 w-3" />
+                                </span>
+                                <span className="leading-relaxed">{tt(r)}</span>
+                              </li>
+                            );
+                          })}
                         </ul>
                       </Section>
                     </motion.div>

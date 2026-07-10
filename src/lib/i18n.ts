@@ -46,7 +46,7 @@ export const dict = {
       title: "پروژه‌های منتخب",
       subtitle:
         "مجموعه‌ای از پروژه‌هایی که در آن‌ها نقش کلیدی در طراحی محصول، تجربه کاربری و ساخت سیستم‌های طراحی داشتم.",
-      viewProject: "مشاهده پروژه",
+      viewProject: "مشاهده",
       // Modal
       modal: {
         overview: "معرفی پروژه",
@@ -153,7 +153,7 @@ export const dict = {
       title: "Selected projects",
       subtitle:
         "A collection of projects where I played a key role in product design, user experience, and building design systems.",
-      viewProject: "View project",
+      viewProject: "View",
       modal: {
         overview: "Project overview",
         myRole: "My role",

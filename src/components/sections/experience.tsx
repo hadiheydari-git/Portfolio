@@ -1,81 +1,12 @@
 "use client";
 
 import * as React from "react";
-import {
-  Briefcase,
-  Check,
-  Target,
-  Search,
-  PenTool,
-  FlaskConical,
-  Layout,
-  Users,
-  Settings2,
-  Zap,
-  TrendingUp,
-  type LucideIcon,
-} from "lucide-react";
+import { Briefcase, Target } from "lucide-react";
 import { SectionHeading } from "@/components/sections/section-heading";
 import { useLanguage } from "@/components/providers/language-provider";
 import { RevealOnScroll, RevealItem } from "@/components/ui/reveal-on-scroll";
 import { experiences } from "@/lib/content";
-
-/**
- * Picks a topical icon for a responsibility based on keywords in its text
- * (matched against both fa + en). Falls back to a generic check-style icon.
- */
-const RESPONSIBILITY_ICONS: { keywords: string[]; icon: LucideIcon }[] = [
-  // Research / analysis / competitors / users
-  {
-    keywords: ["تحقیق", "research", "analy", "رقبا", "competitor", "کاربر", "user", "نیاز", "need"],
-    icon: Search,
-  },
-  // Design / wireframe / UI / UX / design system
-  {
-    keywords: ["طراحی", "design", "وایرفریم", "wireframe", "رابط", "interface", "سیستم طراحی", "design system", "کامپوننت", "component"],
-    icon: PenTool,
-  },
-  // Testing / experiments / iteration
-  {
-    keywords: ["آزمایش", "test", "نسخه", "version", "تجربه", "experience"],
-    icon: FlaskConical,
-  },
-  // Layout / flows / features / categorization
-  {
-    keywords: ["یوزر فلو", "user flow", "ویژگی", "feature", "دسته‌بندی", "categor", "صفحه", "page", "پنل", "panel"],
-    icon: Layout,
-  },
-  // Collaboration / co-founder / leading / clients
-  {
-    keywords: ["همکار", "team", "مشتری", "client", "هم‌بنیان", "co-found", "هدایت", "lead", "تأسیس", "found"],
-    icon: Users,
-  },
-  // Settings / management / admin
-  {
-    keywords: ["مدیریت", "manage", "تنظیم", "config", "ساعت", "hour", "تخفیف", "discount", "سفارش", "order"],
-    icon: Settings2,
-  },
-  // Fast / AI / vibe coding / rapid
-  {
-    keywords: ["سریع", "fast", "هوش", "AI", "vibe", "تکرار", "iterat"],
-    icon: Zap,
-  },
-  // Growth / MVP / prioritize / market
-  {
-    keywords: ["رشد", "growth", "MVP", "اولویت", "priorit", "بازار", "market", "هدف", "goal"],
-    icon: TrendingUp,
-  },
-];
-
-function getResponsibilityIcon(fa: string, en: string): LucideIcon {
-  const text = (fa + " " + en).toLowerCase();
-  for (const rule of RESPONSIBILITY_ICONS) {
-    if (rule.keywords.some((k) => text.includes(k.toLowerCase()))) {
-      return rule.icon;
-    }
-  }
-  return Check as unknown as LucideIcon;
-}
+import { getResponsibilityIcon } from "@/lib/responsibility-icons";
 
 export function Experience() {
   const { t, tt } = useLanguage();

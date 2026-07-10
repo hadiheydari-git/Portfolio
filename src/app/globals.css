@@ -562,3 +562,10 @@ body::-webkit-scrollbar-thumb:hover {
     );
   }
 }
+
+/* NOTE: The theme toggle ripple animation (View Transitions API) CSS used to
+   live here, but Turbopack's Lightning CSS optimizer was stripping the
+   `::view-transition-old(root)` / `::view-transition-new(root)` pseudo-element
+   rules and the `theme-ripple-expand` keyframes entirely from the compiled
+   output. The CSS is now injected via a <style> tag in the ThemeProvider
+   component, which bypasses the optimizer. See theme-provider.tsx. */

@@ -24,6 +24,14 @@ type Props = {
   critical?: boolean;
   /** Unique key for critical image tracking (must match a key in criticalKeys). */
   criticalKey?: string;
+  /**
+   * `sizes` attribute for the underlying <img>.
+   * Only used when the component is upgraded to next/image.
+   * Currently unused — kept for API compatibility.
+   */
+  sizes?: string;
+  /** Image quality (1-100). Currently unused — kept for API compatibility. */
+  quality?: number;
 };
 
 /**
@@ -35,6 +43,12 @@ type Props = {
  *   (opacity-0) and fades in once loaded.
  * - Critical images report to LoadingGateProvider.
  * - Non-critical images show a skeleton/gradient placeholder until loaded.
+ *
+ * NOTE: For the project modal cover, use `next/image` directly instead of
+ * SmartImage — the modal cover source images are 8K and a plain <img>
+ * forces the browser to bilinearly downscale 11× (8640px → 768px display),
+ * producing a subtle blur. next/image generates proper srcset variants so
+ * the browser receives an appropriately-sized image. See project-modal.tsx.
  */
 export function SmartImage({
   src,
@@ -47,6 +61,10 @@ export function SmartImage({
   skeleton = false,
   critical = false,
   criticalKey,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  sizes: _sizes,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  quality: _quality,
 }: Props) {
   const { reportCritical } = useAssetQueue();
   const [loaded, setLoaded] = React.useState(false);

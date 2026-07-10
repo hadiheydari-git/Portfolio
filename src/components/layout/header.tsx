@@ -19,7 +19,7 @@ const NAV_ITEMS = [
 
 export function Header() {
   const { t, locale, toggleLocale } = useLanguage();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, toggleThemeWithRipple } = useTheme();
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState("about");
@@ -122,7 +122,7 @@ export function Header() {
           </button>
 
           <button
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            onClick={(e) => toggleThemeWithRipple(e)}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 hover:bg-secondary hover:shadow-card dark:border-white/10"
             aria-label={t("common.theme")}
           >
