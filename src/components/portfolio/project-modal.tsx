@@ -122,6 +122,15 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   // once the animation is done, letting the browser render the cover at
   // full native sharpness.
   const [coverRevealDone, setCoverRevealDone] = React.useState(false);
+  // True once the cover image/video has finished loading. The aperture
+  // reveal animation is GATED on this — without it, on first open the
+  // motion.div animates from blur(24px)→blur(0px) while the image is
+  // still loading, so the user never sees the blur transition; the
+  // image just pops in suddenly once it loads (by which point blur is
+  // already at 0). By waiting for `coverMediaReady`, the aperture
+  // effect runs WITH the image visible, producing the intended
+  // camera-lens reveal on first open AND on cached re-opens.
+  const [coverMediaReady, setCoverMediaReady] = React.useState(false);
   const openSequenceRef = React.useRef(0);
   // Timer ref used to delay starting child animations until after the
   // container's entrance animation completes (handles slow-first-open).
@@ -209,6 +218,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       setContentAnimate(false);
       setGalleryReady(false);
       setCoverRevealDone(false);
+      setCoverMediaReady(false);
       if (parentAnimationTimerRef.current) {
         clearTimeout(parentAnimationTimerRef.current);
         parentAnimationTimerRef.current = null;
@@ -219,6 +229,16 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     setContentAnimate(false);
     setGalleryReady(false);
     setPortalReady(false);
+    setCoverMediaReady(false);
+    // Defensive: reset `coverRevealDone` on OPEN too, not just on close.
+    // If the user reopens the modal quickly (before the close-reset has
+    // fully propagated), `coverRevealDone` could still be `true` from the
+    // previous open. The newly-mounted cover motion.div would then see
+    // `animate = { opacity: 1, scale: 1, filter: "none" }` with
+    // `transition: { duration: 0 }` — skipping the aperture animation
+    // entirely. This is the root cause of the "cover animation sometimes
+    // doesn't run on 2nd/3rd open" bug.
+    setCoverRevealDone(false);
 
     const sequence = ++openSequenceRef.current;
     const timer = window.setTimeout(() => {
@@ -372,15 +392,17 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                 // in onAnimationComplete to avoid a persistent GPU layer.
                 style={{ borderWidth: 0 }}
                 className={cn(
-                  // Centering on desktop uses `sm:inset-0 sm:m-auto` which
-                  // sets margin:auto on all sides within a fixed inset-0
-                  // container — this centers the panel WITHOUT any transform.
+                  // Centering on desktop uses `sm:inset-y-6 sm:inset-x-0 sm:m-auto`
+                  // which sets margin:auto within a container that has 24px (6 ×
+                  // 4px) top + bottom insets — this centers the panel BOTH
+                  // horizontally AND vertically WITHOUT any transform, while
+                  // keeping a 24px gap from the top and bottom of the viewport.
                   // Avoiding transform is critical: a persistent transform
                   // (even translate(-50%,-50%)) promotes the element to a
-                  // GPU compositor layer, which disables subpixel AA for
-                  // text in Chrome and produces the "subtle blur" effect.
+                  // GPU compositor layer, which disables subpixel AA for text
+                  // in Chrome and produces the "subtle blur" effect.
                   // Mobile uses a bottom sheet (fixed bottom-0, no centering).
-                  "fixed inset-x-0 bottom-0 z-60 mx-auto flex w-full max-w-3xl flex-col rounded-t-[2rem] sm:inset-0 sm:bottom-auto sm:m-auto sm:max-h-[88vh] sm:rounded-[2rem]",
+                  "fixed inset-x-0 bottom-0 z-60 mx-auto flex w-full max-w-3xl flex-col rounded-t-[2rem] sm:inset-y-6 sm:inset-x-0 sm:m-auto sm:max-h-[calc(100vh-48px)] sm:rounded-[2rem]",
                   lightboxImg
                     ? "max-h-none overflow-hidden border-0 bg-transparent pointer-events-none"
                     : "max-h-[92vh] overflow-hidden bg-background shadow-2xl"
@@ -444,6 +466,16 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       // with full-quality resampling (avoids the subtle blur
                       // that GPU-composited layers exhibit for heavily
                       // downscaled images like our 8K source → 768px display).
+                      //
+                      // GATING on `coverMediaReady`: the aperture animation
+                      // only runs AFTER the image/video has loaded. Before
+                      // that, `animate` mirrors `initial` so framer-motion
+                      // does nothing (no transition), keeping the cover
+                      // invisible + blurred until the media is ready. This
+                      // ensures the camera-lens reveal is VISIBLE on first
+                      // open (when the image takes time to load) instead of
+                      // animating an empty container and having the image
+                      // pop in after the blur has already cleared.
                       initial={
                         prefersReducedMotion
                           ? { opacity: 0 }
@@ -451,20 +483,24 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       }
                       animate={
                         prefersReducedMotion
-                          ? { opacity: 1 }
+                          ? coverMediaReady
+                            ? { opacity: 1 }
+                            : { opacity: 0 }
                           : coverRevealDone
                             ? { opacity: 1, scale: 1, filter: "none" }
-                            : { opacity: 1, filter: "blur(0px) brightness(1)", scale: 1 }
+                            : coverMediaReady
+                              ? { opacity: 1, filter: "blur(0px) brightness(1)", scale: 1 }
+                              : { opacity: 0, filter: "blur(24px) brightness(0.3)", scale: 1.08 }
                       }
                       transition={
                         prefersReducedMotion
                           ? { duration: 0.4, delay: 0.15 }
                           : coverRevealDone
                             ? { duration: 0 } // instant swap, no re-animation
-                            : { duration: 1.2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }
+                            : { duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }
                       }
                       onAnimationComplete={() => {
-                        if (!prefersReducedMotion && !coverRevealDone) {
+                        if (!prefersReducedMotion && !coverRevealDone && coverMediaReady) {
                           setCoverRevealDone(true);
                         }
                       }}
@@ -477,6 +513,16 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           loop
                           muted
                           playsInline
+                          onLoadedData={() => {
+                            // Defer to next frame so framer-motion has time to
+                            // commit the hidden `initial` state before we flip
+                            // to the shown `animate` target. Without this, on
+                            // cached re-opens the browser can fire onLoad/
+                            // onLoadedData synchronously during mount, causing
+                            // framer-motion to see initial=shown and skip the
+                            // aperture animation entirely.
+                            requestAnimationFrame(() => setCoverMediaReady(true));
+                          }}
                           className="h-full w-full object-cover object-center"
                         />
                       ) : (
@@ -496,7 +542,17 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                          * The motion.div parent has `relative` in its className
                          * so next/image `fill` (position: absolute) fills the
                          * motion.div, ensuring the reveal animation's scale/blur
-                         * transform applies to the image. */
+                         * transform applies to the image.
+                         *
+                         * `onLoad` fires when the image has finished loading
+                         * (from network OR cache). This gates the aperture
+                         * animation above via `coverMediaReady`. The
+                         * requestAnimationFrame wrapper defers the state flip
+                         * so framer-motion has time to mount with the hidden
+                         * initial state first — without it, cached re-opens
+                         * can fire onLoad synchronously during mount, causing
+                         * framer-motion to see initial=shown and skip the
+                         * aperture animation. */
                         <Image
                           key={`${project.id}-cover`}
                           src={project.cover}
@@ -506,6 +562,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           quality={80}
                           priority
                           draggable={false}
+                          onLoad={() => {
+                            requestAnimationFrame(() => setCoverMediaReady(true));
+                          }}
                           className="object-cover"
                         />
                       )}
@@ -735,7 +794,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   // max-width (DevSolutions wide vs others tall).
                   //
                   // Mobile (max-sm): keep the existing scroll behavior.
-                  "fixed inset-0 z-[200] flex flex-col items-center justify-start pt-10 pb-20 max-sm:px-6 pointer-events-auto overflow-y-auto sm:pt-8 sm:pb-3 max-sm:[touch-action:pan-y] max-sm:overscroll-contain scrollbar-none bg-black/50 backdrop-blur-md",
+                  "fixed inset-0 z-[200] flex flex-col items-center justify-start pt-10 pb-20 max-sm:px-6 pointer-events-auto overflow-y-auto sm:pt-6 sm:pb-6 max-sm:[touch-action:pan-y] max-sm:overscroll-contain scrollbar-none bg-black/50 backdrop-blur-md",
                   // Dev Solutions images are very tall (full-page screenshots).
                   // `sm:justify-center` would vertically center them, which
                   // pushes the top of the image above the viewport when the

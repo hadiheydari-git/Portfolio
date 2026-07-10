@@ -91,11 +91,11 @@ export function Hero() {
           </RevealItem>
 
           {/* About Me integrated directly into the hero */}
-          <RevealItem className="relative max-w-xl mt-[32px]">
+          <RevealItem className="relative max-w-md mt-[32px]">
             <div className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
               {t("hero.aboutLabel")}
             </div>
-            <p className="text-pretty text-base leading-relaxed text-foreground/80 sm:text-lg">
+            <p className="text-pretty text-base leading-relaxed text-foreground/80">
               {tt(profile.about)}
             </p>
           </RevealItem>
