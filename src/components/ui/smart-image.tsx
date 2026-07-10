@@ -136,7 +136,7 @@ export function SmartImage({
         onLoad={handleLoad}
         onError={handleError}
         decoding={critical ? "sync" : "async"}
-        {...(critical ? { fetchPriority: "high" as const } : {})}
+        fetchPriority={critical ? "high" : "low"}
         draggable={false}
         className={cn(
           "relative",

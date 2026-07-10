@@ -49,7 +49,10 @@ export function Header() {
   }, []);
 
   return (
-    <header
+    <motion.header
+      initial={{ opacity: 0, y: -32 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.48, ease: [0.16, 1, 0.3, 1] }}
       className="width-before-scroll-bar fixed inset-x-0 top-0 z-50 pt-4 sm:pt-5 animate-header-enter"
     >
       {/* Container-edge wrapper centers the header and applies the SAME
@@ -189,6 +192,6 @@ export function Header() {
           )}
         </AnimatePresence>
       </div>
-    </header>
+    </motion.header>
   );
 }

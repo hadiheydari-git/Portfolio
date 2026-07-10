@@ -92,10 +92,16 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   const prefersReducedMotion = useReducedMotion();
   // Controls when the interior staggered content should begin animating.
   // We wait for the container's entrance animation to finish so child
-  // animations don't try to start during a delayed container mount.
+  // content (especially images) does not participate in the open.
   const [contentAnimate, setContentAnimate] = React.useState(
     () => prefersReducedMotion
   );
+  const [galleryReady, setGalleryReady] = React.useState(
+    () => prefersReducedMotion
+  );
+  const [portalReady, setPortalReady] = React.useState(false);
+  const [modalOpenKey, setModalOpenKey] = React.useState(0);
+  const openSequenceRef = React.useRef(0);
   // Timer ref used to delay starting child animations until after the
   // container's entrance animation completes (handles slow-first-open).
   const parentAnimationTimerRef = React.useRef<number | null>(null);
@@ -171,16 +177,37 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
 
   // Reset content animation state whenever the modal opens/closes.
   React.useEffect(() => {
-    if (open) {
-      setContentAnimate(prefersReducedMotion);
-    } else {
+    if (!open || !project) {
+      setPortalReady(false);
       setContentAnimate(false);
+      setGalleryReady(false);
       if (parentAnimationTimerRef.current) {
         clearTimeout(parentAnimationTimerRef.current);
         parentAnimationTimerRef.current = null;
       }
+      return;
     }
-  }, [open, prefersReducedMotion]);
+
+    setContentAnimate(false);
+    setGalleryReady(false);
+    setPortalReady(false);
+
+    const sequence = ++openSequenceRef.current;
+    const timer = window.setTimeout(() => {
+      if (sequence !== openSequenceRef.current) return;
+      setModalOpenKey((prev) => prev + 1);
+      setPortalReady(true);
+    }, 0);
+
+    if (prefersReducedMotion) {
+      setContentAnimate(true);
+      setGalleryReady(true);
+    }
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [open, project?.id, prefersReducedMotion]);
 
   // Per-slide reset: when the displayed image changes, reset the
   // per-image loaded flag (so the skeleton shows for the new image)
@@ -245,7 +272,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       }}
     >
       <AnimatePresence>
-        {open && project && (
+        {open && project && portalReady && (
           <DialogPrimitive.Portal forceMount>
             {/* Backdrop — hidden behind lightbox's opaque bg when lightbox is open */}
             <DialogPrimitive.Overlay asChild>
@@ -254,7 +281,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md"
+                style={{
+                  transform: "translateZ(0)",
+                  backfaceVisibility: "hidden",
+                  willChange: "opacity",
+                  outline: "1px solid transparent",
+                }}
+                className="fixed inset-0 z-50 isolate bg-black/50 backdrop-blur-md"
               />
             </DialogPrimitive.Overlay>
 
@@ -265,6 +298,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
               onInteractOutside={lightboxImg ? (e) => e.preventDefault() : undefined}
             >
               <motion.div
+                key={modalOpenKey}
                 initial={{ opacity: 0, scale: 0.96, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97, y: 8 }}
@@ -275,8 +309,10 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                 // buffer (parent animation duration + small margin)
                 // to avoid child animations running too quickly.
                 onAnimationComplete={() => {
+                  if (!open) return;
                   if (prefersReducedMotion) {
                     setContentAnimate(true);
+                    setGalleryReady(true);
                     return;
                   }
                   if (parentAnimationTimerRef.current) {
@@ -284,12 +320,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   }
                   parentAnimationTimerRef.current = window.setTimeout(() => {
                     setContentAnimate(true);
+                    setGalleryReady(true);
                     parentAnimationTimerRef.current = null;
                   }, 40); // small buffer to keep entrance snappy
                 }}
-                style={{ borderWidth: 0 }}
+                style={{ borderWidth: 0, willChange: "transform, opacity" }}
                 className={cn(
-                  "fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-3xl flex-col rounded-t-[2rem] sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[2rem]",
+                  "fixed inset-x-0 bottom-0 z-60 mx-auto flex w-full max-w-3xl flex-col rounded-t-[2rem] sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[2rem]",
                   lightboxImg
                     ? "max-h-none overflow-hidden border-0 bg-transparent pointer-events-none"
                     : "max-h-[92vh] overflow-hidden bg-background shadow-2xl sm:max-h-[88vh]"
@@ -322,7 +359,12 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       through during the filter transition. Works for both
                       video (Dev Solutions) and images. */}
                   <div
-                    style={{ backgroundColor: "var(--background)", marginBottom: -2 }}
+                    style={{
+                      backgroundColor: "var(--background)",
+                      marginBottom: -2,
+                      transform: "translateZ(0)",
+                      backfaceVisibility: "hidden",
+                    }}
                     className="relative aspect-[16/9] w-full overflow-hidden rounded-t-[2rem] sm:rounded-t-[2rem]"
                   >
                     <motion.div
@@ -450,46 +492,68 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     <motion.div variants={itemVariants}>
                       <Section title={t("portfolio.modal.gallery")}>
                       <div dir="ltr" className="grid grid-cols-2 items-start gap-2 sm:grid-cols-3 sm:gap-2.5">
-                        {project.gallery.map((img, i) => (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => setLightboxImg(img)}
-                            className="group/img relative w-full cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-secondary/30"
-                          >
-                            <div
-                            className={cn(
-                              "relative w-full overflow-hidden",
-                              isDevSolutions && "aspect-[16/9]"
-                            )}
-                            style={
-                              !isDevSolutions && img.aspectRatio
-                                ? { aspectRatio: String(img.aspectRatio) }
-                                : undefined
-                            }
-                          >
-                              <SmartImage
-                                src={img.src}
-                                alt={tt(img.alt)}
-                                natural={!isDevSolutions}
-                                aspectRatio={!isDevSolutions ? img.aspectRatio : undefined}
-                                skeleton
-                                gradientClassName={project.accent}
-                                imgClassName="transition-transform duration-500 ease-out group-hover/img:scale-[1.05]"
-                              />
-                            </div>
-                            {/* Dark overlay — fades in on hover.
-                                Pointer-events-none so it doesn't block
-                                the button click. */}
-                            <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/img:bg-black/40" />
-                            {/* Centered zoom icon — appears on hover. */}
-                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                              <span className="flex h-10 w-10 scale-90 items-center justify-center rounded-full bg-white/20 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/img:scale-100 group-hover/img:opacity-100">
-                                <ZoomIn className="h-5 w-5" />
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                        {project.gallery.map((img, i) => {
+                          const aspectStyle = !isDevSolutions
+                            ? { aspectRatio: String(img.aspectRatio ?? 1.5) }
+                            : undefined;
+
+                          if (!galleryReady) {
+                            return (
+                              <div
+                                key={i}
+                                className="relative w-full overflow-hidden rounded-xl border border-border/60 bg-secondary/30"
+                                aria-hidden="true"
+                              >
+                                <div
+                                  className={cn(
+                                    "relative w-full overflow-hidden bg-slate-200/10",
+                                    isDevSolutions && "aspect-[16/9]"
+                                  )}
+                                  style={aspectStyle}
+                                >
+                                  <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-background via-secondary/10 to-background" />
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setLightboxImg(img)}
+                              className="group/img relative w-full cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-secondary/30"
+                            >
+                              <div
+                                className={cn(
+                                  "relative w-full overflow-hidden",
+                                  isDevSolutions && "aspect-[16/9]"
+                                )}
+                                style={aspectStyle}
+                              >
+                                <SmartImage
+                                  src={img.src}
+                                  alt={tt(img.alt)}
+                                  natural={!isDevSolutions}
+                                  aspectRatio={!isDevSolutions ? img.aspectRatio : undefined}
+                                  skeleton
+                                  gradientClassName={project.accent}
+                                  imgClassName="transition-transform duration-500 ease-out group-hover/img:scale-[1.05]"
+                                />
+                              </div>
+                              {/* Dark overlay — fades in on hover.
+                                  Pointer-events-none so it doesn't block
+                                  the button click. */}
+                              <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/img:bg-black/40" />
+                              {/* Centered zoom icon — appears on hover. */}
+                              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                <span className="flex h-10 w-10 scale-90 items-center justify-center rounded-full bg-white/20 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/img:scale-100 group-hover/img:opacity-100">
+                                  <ZoomIn className="h-5 w-5" />
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                       </Section>
                     </motion.div>
