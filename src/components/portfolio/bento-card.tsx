@@ -95,10 +95,23 @@ const BentoCard = React.memo(function BentoCard({
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
         />
 
-        {/* Bottom fade — single Tailwind gradient, no inline styles */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+        {/* Bottom fade — dark gradient overlay on the lower portion of the
+            card image so the title/tagline stay readable.
+            Mafia Master & Dev Solutions have brighter covers, so they get a
+            taller + stronger fade (h-2/3, with an extra via stop) so the
+            shadow actually reads ON the image instead of vanishing. The
+            other two projects keep the original lighter fade. */}
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent",
+            project.id === "mafia-master" || project.id === "dev-solutions"
+              ? "h-2/3 from-black/95 via-black/60 via-black/25"
+              : "h-1/2 from-black/85 via-black/40"
+          )}
+        />
 
-        {/* Mafia Master role badge — subtle animated gradient bg (CSS only) */}
+        {/* Mafia Master role badge — same styling as the role badge inside
+            the project modal (theme-token based, no animation). */}
         {project.id === "mafia-master" && (
           <div
             className={cn(
@@ -106,7 +119,7 @@ const BentoCard = React.memo(function BentoCard({
               locale === "fa" ? "justify-end" : "justify-end"
             )}
           >
-            <span className="mafia-vibe-badge rounded-full border border-white/15 bg-black/90 px-3 py-1 text-xs font-medium text-white">
+            <span className="rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-xs font-medium">
               {tt(project.role)}
             </span>
           </div>

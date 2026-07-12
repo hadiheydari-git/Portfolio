@@ -23,6 +23,9 @@ export function Header() {
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState("about");
+  // Ref to the theme toggle button — used to compute its CENTER for the
+  // ripple animation origin (see onClick handler).
+  const themeToggleRef = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -122,7 +125,23 @@ export function Header() {
           </button>
 
           <button
-            onClick={(e) => toggleThemeWithRipple(e)}
+            ref={themeToggleRef}
+            onClick={(e) => {
+              // Compute the toggle button's CENTER as the ripple origin,
+              // NOT the raw click point (e.clientX/Y). On mobile, the touch
+              // point can be anywhere on the button — sometimes at the very
+              // edge — which made the ripple appear to start from a random
+              // spot (or even from the top of the header in some mobile
+              // browsers due to URL-bar / scroll-position quirks). Using the
+              // button's bounding rect guarantees the ripple ALWAYS starts
+              // from the toggle's center, matching what the user expects.
+              const rect = themeToggleRef.current?.getBoundingClientRect();
+              toggleThemeWithRipple(
+                rect
+                  ? { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }
+                  : e
+              );
+            }}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 hover:bg-secondary hover:shadow-card dark:border-white/10"
             aria-label={t("common.theme")}
           >

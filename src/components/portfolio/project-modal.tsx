@@ -5,7 +5,7 @@ import Image from "next/image";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion, type Variants } from "framer-motion";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ZoomIn, ChevronLeft, ChevronRight, ArrowUpRight } from "lucide-react";
 import { useLanguage } from "@/components/providers/language-provider";
 import { SmartImage } from "@/components/ui/smart-image";
 import { ToolIcon } from "@/components/ui/tool-icon";
@@ -348,7 +348,23 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
               <motion.div
                 key={modalOpenKey}
                 initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
+                // GATE the panel entrance on `coverMediaReady` so the panel
+                // (with its shadow-2xl + bg-background) NEVER appears before
+                // the cover image has loaded. Previously the panel entered
+                // immediately while the cover sat at opacity:0 + brightness:0.3
+                // — producing an empty rectangle with a shadow ("page with a
+                // shadow, no image") until the image loaded. Now the panel
+                // stays at opacity:0 + y:16 until coverMediaReady flips to
+                // true, then it animates in simultaneously with the cover's
+                // aperture reveal.
+                //
+                // The backdrop overlay still fades in immediately (separate
+                // motion.div above), so the user sees the screen dim right
+                // away and knows something is loading.
+                animate={{
+                  opacity: coverMediaReady ? 1 : 0,
+                  y: coverMediaReady ? 0 : 16,
+                }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
                 // When the parent entrance animation completes we trigger
@@ -413,13 +429,33 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     mobile = 1.5rem, sm:p-8 on desktop = 2rem) so the X
                     aligns with the inner content edge instead of hugging
                     the modal border. Sized to match the lightbox close
-                    button (h-11 w-11 / X h-5 w-5) for visual consistency. */}
+                    button (h-11 w-11 / X h-5 w-5) for visual consistency.
+                    Animated entrance: fades + scales in shortly after the
+                    panel becomes visible.
+
+                    IMPORTANT — gating on `coverMediaReady`:
+                    The parent panel sits at opacity:0 + y:16 until
+                    `coverMediaReady` flips true (we gate the panel entrance
+                    on the cover image loading). Without also gating this
+                    button's entrance on the same flag, framer-motion would
+                    start the button's 0.3s delay timer from MOUNT time —
+                    so by the time the panel finally appears (after image
+                    load), the button would already be at opacity:1 and the
+                    entrance animation would be invisible. Tying `animate`
+                    to `coverMediaReady` ensures the button starts its
+                    fade+scale ONLY once the panel is actually visible. */}
                 {!lightboxImg && (
-                  <DialogPrimitive.Close
-                    className="absolute end-6 top-6 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-background/70 backdrop-blur transition-all duration-300 hover:bg-secondary sm:end-8 sm:top-8 dark:border-white/10"
-                    aria-label={t("portfolio.modal.close")}
-                  >
-                    <X className="h-5 w-5" />
+                  <DialogPrimitive.Close asChild>
+                    <motion.button
+                      type="button"
+                      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.7 }}
+                      animate={coverMediaReady ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.7 }}
+                      transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute end-6 top-6 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-background/70 backdrop-blur transition-colors duration-300 hover:bg-secondary sm:end-8 sm:top-8 dark:border-white/10"
+                      aria-label={t("portfolio.modal.close")}
+                    >
+                      <X className="h-5 w-5" />
+                    </motion.button>
                   </DialogPrimitive.Close>
                 )}
 
@@ -523,6 +559,10 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             // aperture animation entirely.
                             requestAnimationFrame(() => setCoverMediaReady(true));
                           }}
+                          // Safety net: same pattern as the Image onError above.
+                          onError={() => {
+                            requestAnimationFrame(() => setCoverMediaReady(true));
+                          }}
                           className="h-full w-full object-cover object-center"
                         />
                       ) : (
@@ -565,11 +605,83 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           onLoad={() => {
                             requestAnimationFrame(() => setCoverMediaReady(true));
                           }}
+                          // Safety net: if the cover fails to load, flip
+                          // coverMediaReady anyway so the modal panel does
+                          // not stay invisible forever (we gate the panel
+                          // entrance on this flag — see the motion.div above).
+                          // The cover container's bg-background will show
+                          // through as a clean empty area instead of leaving
+                          // the whole modal stuck at opacity:0.
+                          onError={() => {
+                            requestAnimationFrame(() => setCoverMediaReady(true));
+                          }}
                           className="object-cover"
                         />
                       )}
                     </motion.div>
-                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background to-transparent" />
+                    {/* Cover bottom fade.
+                        - Mafia Master & Dev Solutions: these covers are bright,
+                          so they get a taller + stronger black fade (h-2/3,
+                          from-black/95) so the shadow reads ON the image
+                          instead of vanishing — and never looks like a white
+                          shadow in light theme.
+                        - All other projects: `from-background` so the cover
+                          blends seamlessly into the modal content area below. */}
+                    <div
+                      className={cn(
+                        "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent",
+                        project.id === "mafia-master" || project.id === "dev-solutions"
+                          ? "h-2/3 from-black/95 via-black/60 via-black/25"
+                          : "h-1/2 from-background"
+                      )}
+                    />
+
+                    {/* Project link — overlaid on the cover, bottom corner
+                        opposite to the reading direction (so it never collides
+                        with the modal's text column). Sits over the cover's
+                        dark gradient fade. Glass pill styled to match the
+                        bento card's "مشاهده" button: semi-transparent bg +
+                        backdrop-blur + subtle inset highlight, with a hover
+                        color swap (no scale). Reads clearly in both light &
+                        dark themes because the cover bottom always has a
+                        strong black fade. Hidden when no link.
+                        Animated entrance: fades + slides up + scales in
+                        after the cover has begun its aperture reveal, so
+                        the button feels like it emerges from the cover. */}
+                    {project.link && (
+                      <motion.a
+                        href={project.link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.9 }}
+                        animate={coverMediaReady ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.9 }}
+                        transition={{ duration: 0.5, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                        className={cn(
+                          "absolute bottom-4 z-20 inline-flex items-center gap-1.5 rounded-full",
+                          "border border-white/15 bg-white/10 px-3.5 py-1.5",
+                          "text-xs font-medium text-white backdrop-blur-md backdrop-saturate-150",
+                          "[box-shadow:inset_0_1px_0_0_rgba(255,255,255,0.15)]",
+                          "transition-colors duration-300",
+                          "hover:bg-white/25 hover:text-white hover:border-white/25",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                          // Opposite corner to the reading direction:
+                          // LTR → bottom-right; RTL → bottom-left.
+                          locale === "fa" ? "left-4" : "right-4"
+                        )}
+                      >
+                        <span>{tt(project.link.label)}</span>
+                        <ArrowUpRight
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            // Mirror the arrow for RTL (Persian) so it points
+                            // in the reading direction — same pattern as the
+                            // bento card's "مشاهده" button.
+                            locale === "fa" ? "-scale-x-100" : ""
+                          )}
+                        />
+                      </motion.a>
+                    )}
                   </div>
 
                   <motion.div
@@ -714,7 +826,43 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                                   aspectRatio={!isDevSolutions ? img.aspectRatio : undefined}
                                   skeleton
                                   gradientClassName={project.accent}
-                                  imgClassName="transition-transform duration-500 ease-out group-hover/img:scale-[1.05]"
+                                  // DEV-SOLUTIONS ONLY — when natural={false}, the
+                                  // SmartImage root div needs explicit h-full w-full
+                                  // so the inner <img>'s `h-full w-full object-cover`
+                                  // can actually fill the parent. Without this, the
+                                  // <img>'s percentage height collapses to its
+                                  // natural height (because the SmartImage div is
+                                  // height:auto), and ultra-wide screenshots (ratio
+                                  // > 16/9) end up SHORTER than the 16:9 cell —
+                                  // leaving an empty band at the bottom of the cell.
+                                  // This mirrors how `header.tsx` and `hero.tsx`
+                                  // already pass `className="h-full w-full"` to
+                                  // SmartImage when using non-natural mode.
+                                  className={isDevSolutions ? "h-full w-full" : undefined}
+                                  imgClassName={cn(
+                                    "transition-transform duration-500 ease-out group-hover/img:scale-[1.05]",
+                                    // Vertical alignment inside the 16:9 cell.
+                                    // - Portrait screenshots (aspectRatio < 1, e.g.
+                                    //   "1-DS Index" at 0.417 and "3-Blog page" at
+                                    //   0.719) are MUCH taller than the cell, so the
+                                    //   default `object-position: center` would skip
+                                    //   the top of the screenshot — showing the
+                                    //   middle of the page instead of its header.
+                                    //   `object-top` aligns the crop to the TOP so
+                                    //   the preview starts from the beginning of
+                                    //   the image.
+                                    // - Landscape / ultra-wide screenshots (ratio
+                                    //   >= 1, e.g. "2-Request" at 1.406 and the
+                                    //   three new admin-panel shots at ~2.34) stay
+                                    //   centered on both axes — this is the default
+                                    //   `object-position: center` and matches the
+                                    //   user's expectation for the new images.
+                                    isDevSolutions &&
+                                      img.aspectRatio !== undefined &&
+                                      img.aspectRatio < 1
+                                      ? "object-top"
+                                      : ""
+                                  )}
                                 />
                               </div>
                               {/* Dark overlay — fades in on hover.

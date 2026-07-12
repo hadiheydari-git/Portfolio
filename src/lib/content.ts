@@ -400,24 +400,56 @@ export const projects: Project[] = [
     ],
     gallery: [
       {
+        // Natural dims: 5760×13820 → ratio 0.417 (very tall portrait).
+        // aspectRatio MUST match the real image — the gallery uses it to
+        // decide vertical alignment inside the 16:9 cell (object-top when
+        // ratio < 1, else object-center). A wrong value here makes the
+        // preview crop from the wrong vertical position.
         src: "/images/Dev Solutions/1-DS Index.webp",
         alt: { fa: "نمای اصلی دِو سولوشن", en: "Dev Solutions index" },
         span: "wide",
-        aspectRatio: 1.75,
+        aspectRatio: 0.417,
       },
       {
+        // Natural dims: 5760×4096 → ratio 1.406 (landscape, near 16:9).
         src: "/images/Dev Solutions/2-Request.webp",
         alt: { fa: "فرم درخواست همکاری", en: "Collaboration request" },
         span: "square",
-        aspectRatio: 1.0,
+        aspectRatio: 1.406,
       },
       {
+        // Natural dims: 5760×8012 → ratio 0.719 (tall portrait).
         src: "/images/Dev Solutions/3-Blog page.webp",
         alt: { fa: "صفحه بلاگ آموزشی", en: "Blog page" },
         span: "square",
-        aspectRatio: 1.0,
+        aspectRatio: 0.719,
+      },
+      {
+        // Natural dims: 6400×2716 → ratio 2.356 (ultra-wide landscape).
+        src: "/images/Dev Solutions/4-Login.webp",
+        alt: { fa: "صفحه ورود پنل مدیریت", en: "Admin panel login" },
+        span: "wide",
+        aspectRatio: 2.356,
+      },
+      {
+        // Natural dims: 6432×2748 → ratio 2.341 (ultra-wide landscape).
+        src: "/images/Dev Solutions/5-Request.webp",
+        alt: { fa: "لیست درخواست‌های دریافتی پنل مدیریت", en: "Admin incoming requests list" },
+        span: "wide",
+        aspectRatio: 2.341,
+      },
+      {
+        // Natural dims: 6432×2748 → ratio 2.341 (ultra-wide landscape).
+        src: "/images/Dev Solutions/6-Request details.webp",
+        alt: { fa: "جزئیات درخواست دریافتی در پنل مدیریت", en: "Admin request details" },
+        span: "wide",
+        aspectRatio: 2.341,
       },
     ],
+    link: {
+      label: { fa: "مشاهده اینستاگرام", en: "View on Instagram" },
+      href: "https://www.instagram.com/devsolutions.agency",
+    },
   },
 ];
 

@@ -528,41 +528,6 @@ body::-webkit-scrollbar-thumb:hover {
   animation-delay: 1.5s;
 }
 
-/* Mafia Master "Vibe Coding" badge — soft 3-color gradient at ~6%
-   opacity, slowly shifting via background-position only (no blur/filters).
-   Scoped to the tiny badge pill so repaint cost stays negligible. */
-@keyframes mafia-vibe-gradient {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-.mafia-vibe-badge {
-  background-image: linear-gradient(
-    120deg,
-    rgba(99, 102, 241, 0.06) 0%,
-    rgba(217, 70, 239, 0.06) 45%,
-    rgba(34, 211, 238, 0.06) 100%
-  );
-  background-size: 200% 200%;
-  animation: mafia-vibe-gradient 9s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .mafia-vibe-badge {
-    animation: none;
-    background-size: 100% 100%;
-    background-image: linear-gradient(
-      120deg,
-      rgba(99, 102, 241, 0.06) 0%,
-      rgba(217, 70, 239, 0.06) 50%,
-      rgba(34, 211, 238, 0.06) 100%
-    );
-  }
-}
-
 /* NOTE: The theme toggle ripple animation (View Transitions API) CSS used to
    live here, but Turbopack's Lightning CSS optimizer was stripping the
    `::view-transition-old(root)` / `::view-transition-new(root)` pseudo-element
