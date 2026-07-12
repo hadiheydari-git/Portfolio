@@ -25,6 +25,13 @@ type Props = {
   /** Unique key for critical image tracking (must match a key in criticalKeys). */
   criticalKey?: string;
   /**
+   * Optional callback fired when the image finishes loading (or fails).
+   * Used by the project modal gallery to implement progressive batch
+   * loading — when an image loads, the parent advances the next batch.
+   * Backward-compatible: existing callers don't pass this and are unaffected.
+   */
+  onLoad?: () => void;
+  /**
    * `sizes` attribute for the underlying <img>.
    * Only used when the component is upgraded to next/image.
    * Currently unused — kept for API compatibility.
@@ -61,6 +68,7 @@ export function SmartImage({
   skeleton = false,
   critical = false,
   criticalKey,
+  onLoad,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   sizes: _sizes,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -80,12 +88,17 @@ export function SmartImage({
   const handleLoad = React.useCallback(() => {
     setLoaded(true);
     if (critical && criticalKey) reportCritical(criticalKey);
-  }, [critical, criticalKey, reportCritical]);
+    onLoad?.();
+  }, [critical, criticalKey, reportCritical, onLoad]);
 
   const handleError = React.useCallback(() => {
     setFailed(true);
     if (critical && criticalKey) reportCritical(criticalKey);
-  }, [critical, criticalKey, reportCritical]);
+    // Treat errors as "done" so the parent's batch counter advances even
+    // if an image fails to load — otherwise the next batch would never
+    // start, leaving the gallery permanently stuck on a broken batch.
+    onLoad?.();
+  }, [critical, criticalKey, reportCritical, onLoad]);
 
   // Hydration gap fix
   const imgRef = React.useRef<HTMLImageElement>(null);
@@ -94,6 +107,7 @@ export function SmartImage({
     if (el && el.complete && el.naturalWidth > 0) {
       setLoaded(true);
       if (critical && criticalKey) reportCritical(criticalKey);
+      onLoad?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

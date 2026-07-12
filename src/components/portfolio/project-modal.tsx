@@ -5,7 +5,7 @@ import Image from "next/image";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion, type Variants } from "framer-motion";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, ZoomIn, ChevronLeft, ChevronRight, ArrowUpRight } from "lucide-react";
+import { X, ZoomIn, ChevronLeft, ChevronRight, ArrowUpRight, ChevronDown } from "lucide-react";
 import { useLanguage } from "@/components/providers/language-provider";
 import { SmartImage } from "@/components/ui/smart-image";
 import { ToolIcon } from "@/components/ui/tool-icon";
@@ -180,6 +180,50 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   // wrapper set this to true.
   const [isImgHovered, setIsImgHovered] = React.useState(false);
 
+  // ── Tall-image scrollable frame (Dev Solutions images 1 & 3) ──────
+  // These two screenshots are very tall portraits (aspectRatio < 1).
+  // In the lightbox they get a SPECIAL 16:9 "autofill" frame: the image
+  // fills the frame's width, its natural height overflows the frame, and
+  // the user can scroll VERTICALLY inside the frame to pan through the
+  // full screenshot. This is the only place in the lightbox where we
+  // intentionally crop height + enable internal scroll.
+  //
+  // A "scroll" hint (text + chevron-down) slides in at the bottom-center
+  // of the frame 1.5s after the lightbox opens, and slides OUT (downward,
+  // exiting from the bottom of the image) as soon as the user starts
+  // scrolling inside the frame.
+  const [scrollHintVisible, setScrollHintVisible] = React.useState(false);
+  const [scrollAvailable, setScrollAvailable] = React.useState(false);
+  const lightboxScrollFrameRef = React.useRef<HTMLDivElement>(null);
+  const scrollHintTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Progressive gallery batch loading ──
+  // Gallery images load in sequential batches of 3, starting from the top.
+  // Batch 1 = images 0-2, Batch 2 = images 3-5, etc. The next batch does
+  // NOT start loading until the current batch's images have all finished
+  // loading (or errored). This limits simultaneous network requests +
+  // image-decode work, keeping the modal snappy on lower-end devices.
+  //
+  // - `activeBatch` (1-indexed): which batch is currently allowed to load.
+  //   Images in batches < activeBatch are already loaded (stay rendered).
+  //   Images in batch === activeBatch render SmartImage and report load.
+  //   Images in batches > activeBatch render a skeleton placeholder only
+  //   (no <img>, so no network request) until their batch becomes active.
+  // - `loadedInBatchCount`: how many images in the current active batch
+  //   have finished loading. When this reaches the batch's expected size,
+  //   we advance to the next batch and reset the counter.
+  const GALLERY_BATCH_SIZE = 3;
+  const [activeBatch, setActiveBatch] = React.useState(1);
+  const [loadedInBatchCount, setLoadedInBatchCount] = React.useState(0);
+
+  // True when the current lightbox image is a tall Dev Solutions
+  // screenshot (aspectRatio < 1) — i.e. image 1 (0.417) or image 3 (0.719).
+  // These are the ONLY two images that get the 16:9 scrollable frame.
+  const isDevSolutionsTall =
+    isDevSolutions &&
+    lightboxImg?.aspectRatio !== undefined &&
+    lightboxImg.aspectRatio < 1;
+
   const lightboxPrev = React.useCallback(() => {
     if (!project || lightboxTotal === 0) return;
     const newIdx = lightboxIndex <= 0 ? lightboxTotal - 1 : lightboxIndex - 1;
@@ -204,6 +248,14 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         setIsImgHovered(false);
         setLightboxImgLoaded(false);
         setLightboxReady(false);
+        // Also clear the tall-image scroll-hint timer + state so a
+        // stale timer doesn't fire after the lightbox has closed and
+        // leak the hint into the next open.
+        setScrollHintVisible(false);
+        if (scrollHintTimerRef.current) {
+          clearTimeout(scrollHintTimerRef.current);
+          scrollHintTimerRef.current = null;
+        }
         if (hideTimerRef.current) {
           clearTimeout(hideTimerRef.current);
         }
@@ -219,6 +271,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       setGalleryReady(false);
       setCoverRevealDone(false);
       setCoverMediaReady(false);
+      // Reset gallery batch loading so the next open starts fresh from
+      // batch 1. Without this, reopening the modal would inherit the
+      // previous activeBatch and skip the progressive loading.
+      setActiveBatch(1);
+      setLoadedInBatchCount(0);
       if (parentAnimationTimerRef.current) {
         clearTimeout(parentAnimationTimerRef.current);
         parentAnimationTimerRef.current = null;
@@ -230,6 +287,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     setGalleryReady(false);
     setPortalReady(false);
     setCoverMediaReady(false);
+    // Reset gallery batch loading on project change too — different
+    // projects have different galleries and we want each to start from
+    // batch 1.
+    setActiveBatch(1);
+    setLoadedInBatchCount(0);
     // Defensive: reset `coverRevealDone` on OPEN too, not just on close.
     // If the user reopens the modal quickly (before the close-reset has
     // fully propagated), `coverRevealDone` could still be `true` from the
@@ -283,6 +345,159 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       }
     };
   }, [lightboxImg?.src]);
+
+  // ── Tall-image scroll hint + frame scroll-position reset ─────────
+  // For the two TALL Dev Solutions screenshots (aspectRatio < 1), the
+  // lightbox renders them inside a 16:9 "autofill" frame whose height
+  // crops the image and lets the user scroll VERTICALLY inside the frame
+  // to pan through the full screenshot.
+  //
+  // This is split into TWO effects for robustness:
+  //
+  // Effect A (runs on every image change):
+  //   - Resets `scrollHintVisible` to false.
+  //   - Clears any pending hint timer.
+  //   - Resets the frame's `scrollTop` to 0 (so navigating between two
+  //     tall images starts the new one at the top).
+  //
+  // Effect B (runs when image is loaded AND it's a tall image):
+  //   - Starts a 1500ms timer.
+  //   - When the timer fires, `scrollHintVisible` flips to true and the
+  //     "scroll" hint slides in at the bottom-center of the frame.
+  //
+  // WHY gate the timer on `lightboxImgLoaded` (not just on image change):
+  //   The tall image is loaded via a plain <img>. On FIRST open (uncached),
+  //   the image can take >1.5s to load. If the timer started at click time
+  //   (image change), it would fire while the skeleton is still showing —
+  //   and then when the image finally loads, the dramatic content-height
+  //   change (0 → very tall) can trigger spurious scroll events in some
+  //   browsers (scroll-anchoring, reflow), which immediately dismiss the
+  //   hint via the `onScroll` handler. The user would never see it.
+  //
+  //   By gating on `lightboxImgLoaded`, the timer starts ONLY after the
+  //   image is actually visible. The hint then appears 1.5s after the
+  //   image is visible (≈ 1.5s after lightbox open for cached images).
+  //   No content-height change can happen after this point, so no
+  //   spurious scroll event can dismiss the hint before the user sees it.
+  //
+  // The hint is dismissed (slides out softly) the moment the user scrolls
+  // more than 5px inside the frame — handled by the `onScroll` callback
+  // on the frame element (the 5px threshold filters out sub-pixel scroll
+  // adjustments from browser reflow).
+
+  // Effect A — reset on image change.
+  React.useEffect(() => {
+    setScrollHintVisible(false);
+    setScrollAvailable(false);
+    if (scrollHintTimerRef.current) {
+      clearTimeout(scrollHintTimerRef.current);
+      scrollHintTimerRef.current = null;
+    }
+    // Reset scroll position to top — applies to ALL images (harmless for
+    // non-tall images because their frame ref is null), but ESSENTIAL
+    // when navigating between two tall images so the new one starts at
+    // the top instead of inheriting the previous scroll offset.
+    if (lightboxScrollFrameRef.current) {
+      lightboxScrollFrameRef.current.scrollTop = 0;
+    }
+  }, [lightboxImg?.src]);
+
+  // Effect — measure whether vertical scroll is actually possible inside
+  // the tall image's frame. If the frame is so tall that the image fits
+  // entirely without overflow, there's nothing to scroll, so we keep
+  // `scrollAvailable = false` and the hint timer (Effect B below) never
+  // fires — the "Scroll" hint never appears.
+  //
+  // This handles the mobile-portrait edge case: on a tall narrow phone,
+  // the frame's height (calc(100vh - 112px)) can exceed the image's
+  // rendered height (frameWidth / aspectRatio), so the image fits inside
+  // the frame without overflowing. For example, on an iPhone 14 (390×844):
+  //   - Frame width: 390 - 48 = 342px
+  //   - Frame height: 844 - 112 = 732px
+  //   - Image 1 (aspectRatio 0.417) rendered height: 342 / 0.417 = 820px → overflow
+  //   - On a smaller image with aspectRatio ~0.5, rendered height would be
+  //     684px → FITS inside the 732px frame → no scroll possible.
+  //
+  // The check uses requestAnimationFrame to ensure the image's full
+  // height is laid out before measuring. We also re-check on window
+  // resize (e.g., device rotation, browser UI show/hide) so the
+  // availability state stays in sync with the actual frame size.
+  //
+  // +4px tolerance filters out sub-pixel rounding differences between
+  // scrollHeight and clientHeight that don't represent real overflow.
+  React.useEffect(() => {
+    if (!isDevSolutionsTall || !lightboxImgLoaded) {
+      setScrollAvailable(false);
+      return;
+    }
+
+    const check = () => {
+      const frame = lightboxScrollFrameRef.current;
+      if (!frame) return;
+      setScrollAvailable(frame.scrollHeight > frame.clientHeight + 4);
+    };
+
+    // Check on next frame to ensure layout is settled.
+    const id = requestAnimationFrame(check);
+
+    // Re-check on resize (device rotation, browser UI show/hide).
+    window.addEventListener("resize", check);
+
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener("resize", check);
+    };
+  }, [isDevSolutionsTall, lightboxImgLoaded, lightboxImg?.src]);
+
+  // Effect B — start the 1.5s hint timer once the tall image has loaded
+  // AND vertical scroll is actually possible. If the image fits entirely
+  // inside the frame (no overflow), `scrollAvailable` stays false and the
+  // timer never starts — the "Scroll" hint never appears.
+  React.useEffect(() => {
+    if (!isDevSolutionsTall || !lightboxImgLoaded || !scrollAvailable) return;
+
+    // 1500ms delay before the hint slides in — counted from when the
+    // image is VISIBLE (loaded), not from click time. This matches the
+    // user's spec: "وقتی لایت باکس باز میشه پس از یک و نیم ثانیه
+    // اسکرول کنید بیاد" = "when the lightbox opens, after 1.5s, the
+    // scroll hint should appear."
+    scrollHintTimerRef.current = setTimeout(() => {
+      setScrollHintVisible(true);
+    }, 1500);
+
+    return () => {
+      if (scrollHintTimerRef.current) {
+        clearTimeout(scrollHintTimerRef.current);
+        scrollHintTimerRef.current = null;
+      }
+    };
+  }, [isDevSolutionsTall, lightboxImgLoaded, scrollAvailable, lightboxImg?.src]);
+
+  // ── Gallery batch advancement ──
+  // When all images in the current active batch have loaded (or errored),
+  // advance to the next batch so its images can start loading. The last
+  // batch may have fewer than GALLERY_BATCH_SIZE images — we compute the
+  // expected size from the gallery length.
+  //
+  // Example: gallery of 8 images, BATCH_SIZE=3
+  //   - Batch 1 (images 0-2): expected 3 → when 3 loaded, advance to batch 2
+  //   - Batch 2 (images 3-5): expected 3 → when 3 loaded, advance to batch 3
+  //   - Batch 3 (images 6-7): expected 2 → when 2 loaded, no more batches
+  React.useEffect(() => {
+    if (!project) return;
+    const total = project.gallery.length;
+    if (total === 0) return;
+    const batchStart = (activeBatch - 1) * GALLERY_BATCH_SIZE;
+    const expectedSize = Math.min(GALLERY_BATCH_SIZE, total - batchStart);
+    if (expectedSize <= 0) return; // no images in this batch (shouldn't happen)
+    if (loadedInBatchCount < expectedSize) return; // still waiting
+    // All images in this batch are done. Advance if more batches remain.
+    const nextBatchStart = activeBatch * GALLERY_BATCH_SIZE;
+    if (nextBatchStart < total) {
+      setActiveBatch((b) => b + 1);
+      setLoadedInBatchCount(0);
+    }
+  }, [loadedInBatchCount, activeBatch, project, GALLERY_BATCH_SIZE]);
 
   // Keyboard nav inside lightbox
   React.useEffect(() => {
@@ -785,25 +1000,25 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             ? { aspectRatio: String(img.aspectRatio ?? 1.5) }
                             : undefined;
 
-                          if (!galleryReady) {
-                            return (
-                              <div
-                                key={i}
-                                className="relative w-full overflow-hidden rounded-xl border border-border/60 bg-secondary/30"
-                                aria-hidden="true"
-                              >
-                                <div
-                                  className={cn(
-                                    "relative w-full overflow-hidden bg-slate-200/10",
-                                    isDevSolutions && "aspect-[16/9]"
-                                  )}
-                                  style={aspectStyle}
-                                >
-                                  <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-background via-secondary/10 to-background" />
-                                </div>
-                              </div>
-                            );
-                          }
+                          // ── Progressive batch loading ──
+                          // Each image belongs to a 1-indexed batch:
+                          //   batch = floor(i / 3) + 1
+                          // Only images whose batch is <= activeBatch get a
+                          // real <img> (via SmartImage). Images in later
+                          // batches render only a skeleton placeholder — no
+                          // <img> in the DOM means no network request and no
+                          // decode work, so the device only processes 3 images
+                          // at a time. Once the current batch's images all
+                          // load, `activeBatch` advances (see the batch
+                          // advancement effect above) and the next batch's
+                          // SmartImages mount and start loading.
+                          //
+                          // The button is always clickable — if the user
+                          // taps a not-yet-loaded cell, the lightbox opens
+                          // and loads the full image directly (the lightbox
+                          // has its own loading state, so this is fine).
+                          const imageBatch = Math.floor(i / GALLERY_BATCH_SIZE) + 1;
+                          const isImageActive = imageBatch <= activeBatch;
 
                           return (
                             <button
@@ -819,51 +1034,85 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                                 )}
                                 style={aspectStyle}
                               >
-                                <SmartImage
-                                  src={img.src}
-                                  alt={tt(img.alt)}
-                                  natural={!isDevSolutions}
-                                  aspectRatio={!isDevSolutions ? img.aspectRatio : undefined}
-                                  skeleton
-                                  gradientClassName={project.accent}
-                                  // DEV-SOLUTIONS ONLY — when natural={false}, the
-                                  // SmartImage root div needs explicit h-full w-full
-                                  // so the inner <img>'s `h-full w-full object-cover`
-                                  // can actually fill the parent. Without this, the
-                                  // <img>'s percentage height collapses to its
-                                  // natural height (because the SmartImage div is
-                                  // height:auto), and ultra-wide screenshots (ratio
-                                  // > 16/9) end up SHORTER than the 16:9 cell —
-                                  // leaving an empty band at the bottom of the cell.
-                                  // This mirrors how `header.tsx` and `hero.tsx`
-                                  // already pass `className="h-full w-full"` to
-                                  // SmartImage when using non-natural mode.
-                                  className={isDevSolutions ? "h-full w-full" : undefined}
-                                  imgClassName={cn(
-                                    "transition-transform duration-500 ease-out group-hover/img:scale-[1.05]",
-                                    // Vertical alignment inside the 16:9 cell.
-                                    // - Portrait screenshots (aspectRatio < 1, e.g.
-                                    //   "1-DS Index" at 0.417 and "3-Blog page" at
-                                    //   0.719) are MUCH taller than the cell, so the
-                                    //   default `object-position: center` would skip
-                                    //   the top of the screenshot — showing the
-                                    //   middle of the page instead of its header.
-                                    //   `object-top` aligns the crop to the TOP so
-                                    //   the preview starts from the beginning of
-                                    //   the image.
-                                    // - Landscape / ultra-wide screenshots (ratio
-                                    //   >= 1, e.g. "2-Request" at 1.406 and the
-                                    //   three new admin-panel shots at ~2.34) stay
-                                    //   centered on both axes — this is the default
-                                    //   `object-position: center` and matches the
-                                    //   user's expectation for the new images.
-                                    isDevSolutions &&
-                                      img.aspectRatio !== undefined &&
-                                      img.aspectRatio < 1
-                                      ? "object-top"
-                                      : ""
-                                  )}
-                                />
+                                {isImageActive ? (
+                                  <SmartImage
+                                    src={img.src}
+                                    alt={tt(img.alt)}
+                                    natural={!isDevSolutions}
+                                    aspectRatio={!isDevSolutions ? img.aspectRatio : undefined}
+                                    skeleton
+                                    gradientClassName={project.accent}
+                                    // DEV-SOLUTIONS ONLY — when natural={false}, the
+                                    // SmartImage root div needs explicit h-full w-full
+                                    // so the inner <img>'s `h-full w-full object-cover`
+                                    // can actually fill the parent. Without this, the
+                                    // <img>'s percentage height collapses to its
+                                    // natural height (because the SmartImage div is
+                                    // height:auto), and ultra-wide screenshots (ratio
+                                    // > 16/9) end up SHORTER than the 16:9 cell —
+                                    // leaving an empty band at the bottom of the cell.
+                                    // This mirrors how `header.tsx` and `hero.tsx`
+                                    // already pass `className="h-full w-full"` to
+                                    // SmartImage when using non-natural mode.
+                                    className={isDevSolutions ? "h-full w-full" : undefined}
+                                    imgClassName={cn(
+                                      "transition-transform duration-500 ease-out group-hover/img:scale-[1.05]",
+                                      // Vertical alignment inside the 16:9 cell.
+                                      // - Portrait screenshots (aspectRatio < 1, e.g.
+                                      //   "1-DS Index" at 0.417 and "3-Blog page" at
+                                      //   0.719) are MUCH taller than the cell, so the
+                                      //   default `object-position: center` would skip
+                                      //   the top of the screenshot — showing the
+                                      //   middle of the page instead of its header.
+                                      //   `object-top` aligns the crop to the TOP so
+                                      //   the preview starts from the beginning of
+                                      //   the image.
+                                      // - Landscape / ultra-wide screenshots (ratio
+                                      //   >= 1, e.g. "2-Request" at 1.406 and the
+                                      //   three new admin-panel shots at ~2.34) stay
+                                      //   centered on both axes — this is the default
+                                      //   `object-position: center` and matches the
+                                      //   user's expectation for the new images.
+                                      isDevSolutions &&
+                                        img.aspectRatio !== undefined &&
+                                        img.aspectRatio < 1
+                                        ? "object-top"
+                                        : ""
+                                    )}
+                                    // Report load back to the parent so the
+                                    // batch advancement effect can track
+                                    // progress and unlock the next batch of 3.
+                                    onLoad={() => {
+                                      // Only count loads for images in the
+                                      // CURRENT active batch — earlier batches
+                                      // re-firing onLoad (e.g. from cached
+                                      // hydration-gap detection) would
+                                      // otherwise inflate the counter.
+                                      if (imageBatch === activeBatch) {
+                                        setLoadedInBatchCount((c) => c + 1);
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  /* ── Inactive-batch placeholder ──
+                                     No <img> is rendered, so the browser
+                                     makes NO network request and does NO
+                                     decode work for this cell. We show only
+                                     the skeleton-shimmer animation so the
+                                     user sees a consistent placeholder
+                                     matching the active cells' loading
+                                     state. When `activeBatch` advances to
+                                     include this image, the placeholder is
+                                     swapped for a real SmartImage which
+                                     starts loading immediately. */
+                                  <div
+                                    className={cn(
+                                      "absolute inset-0 skeleton-shimmer",
+                                      isDevSolutions ? "h-full w-full" : undefined
+                                    )}
+                                    aria-hidden="true"
+                                  />
+                                )}
                               </div>
                               {/* Dark overlay — fades in on hover.
                                   Pointer-events-none so it doesn't block
@@ -928,29 +1177,40 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className={cn(
-                  // ─── Lightbox overlay (desktop standards) ─────────────────────────
-                  // Desktop (sm+): VERTICAL margins — 32px top (sm:pt-8) + 12px bottom
-                  // (sm:pb-3). The bottom is 12px because the capsule wrapper adds
-                  // 20px safe-area padding below the capsule, bringing the TOTAL
-                  // bottom visual margin to 32px (12 + 20). Top is a full 32px
-                  // because the image starts directly at the overlay top padding.
+                  // ─── Lightbox overlay (UNIFIED standard — mobile = desktop) ───────
+                  // The lightbox uses the SAME layout standard on ALL breakpoints:
+                  //   - VERTICAL padding: pt-6 pb-6 (24px top + 24px bottom).
+                  //   - HORIZONTAL margin: driven by each image's own max-width
+                  //     (max-w-[calc(100vw-4rem)] on mobile, sm:max-w-[calc(100vw-8rem)]
+                  //     on desktop = 32px / 64px margin each side).
+                  //   - CENTERING: NO `justify-center` on the overlay. Instead, the
+                  //     inner content div uses `my-auto` — this centers the image +
+                  //     capsule group vertically when there is free space, AND
+                  //     gracefully falls back to top-alignment (scrollable from
+                  //     top) when content overflows. This is the robust pattern
+                  //     for "always centered, but never cut off at the top".
+                  //     `justify-center` + `overflow-y-auto` is buggy: when
+                  //     content overflows, flexbox still tries to center it,
+                  //     causing the TOP to be cut off and unreachable until the
+                  //     user scrolls — this was the mobile centering bug.
+                  //   - GAP between image and capsule = 20px (the capsule wrapper's
+                  //     top padding, since mt is 0).
                   //
-                  // GAP between image and capsule = 20px (the capsule wrapper's
-                  // top padding, since mt is 0). This is the standard gap.
+                  // Previously mobile used `justify-start pt-10 pb-20 px-6` which
+                  // pushed images to the top with asymmetric padding — different
+                  // from desktop. Now mobile matches desktop exactly: centered,
+                  // same padding, same image sizing.
                   //
-                  // HORIZONTAL margin is VARIABLE — driven by each image's own
-                  // max-width (DevSolutions wide vs others tall).
+                  // `overscroll-contain` prevents scroll chaining to the page
+                  // behind on ALL breakpoints. `max-sm:[touch-action:pan-y]`
+                  // enables native vertical drag on touch devices only.
                   //
-                  // Mobile (max-sm): keep the existing scroll behavior.
-                  "fixed inset-0 z-[200] flex flex-col items-center justify-start pt-10 pb-20 max-sm:px-6 pointer-events-auto overflow-y-auto sm:pt-6 sm:pb-6 max-sm:[touch-action:pan-y] max-sm:overscroll-contain scrollbar-none bg-black/50 backdrop-blur-md",
-                  // Dev Solutions images are very tall (full-page screenshots).
-                  // `sm:justify-center` would vertically center them, which
-                  // pushes the top of the image above the viewport when the
-                  // image is taller than the viewport. Using `sm:justify-start`
-                  // for Dev Solutions keeps the image anchored to the top
-                  // (with the sm:py-10 top padding) so it never overflows
-                  // upward — the user scrolls down to see the rest.
-                  isDevSolutions ? "sm:justify-start" : "sm:justify-center"
+                  // ── Mobile padding override ──
+                  // `max-sm:pt-5 max-sm:pb-3` reduces vertical padding on
+                  // mobile only: top 24→20px, bottom 24→12px (per user spec).
+                  // Desktop/tablet (sm+) keeps the original 24px/24px.
+                  "fixed inset-0 z-[200] flex flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-y-auto overscroll-contain scrollbar-none bg-black/50 backdrop-blur-md",
+                  "max-sm:[touch-action:pan-y]"
                 )}
               // Stop wheel events from bubbling up to the document, where
               // `react-remove-scroll` (installed by Radix Dialog) captures
@@ -995,7 +1255,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                 }
               }}
             >
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center my-auto">
 
                 {/* Image — slide animation only on image.
                     The AnimatePresence with mode="wait" ensures only the
@@ -1009,8 +1269,28 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     exit={{ opacity: 0, y: -20, scale: 0.98 }}
                     transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
                     className={cn(
-                      "relative inline-block max-sm:w-full rounded-2xl",
-                      isDevSolutions ? "w-full overflow-hidden" : "sm:w-auto overflow-hidden"
+                      // ── Image wrapper (UNIFIED: mobile = desktop) ──
+                      // `inline-block` + `overflow-hidden` + `rounded-2xl`
+                      // on ALL breakpoints. The width strategy differs by
+                      // project type:
+                      //
+                      // - DevSolutions: `w-full` → the wrapper fills the
+                      //   overlay width. The inner container div uses
+                      //   `flex items-center justify-center` to center the
+                      //   image within. This is needed because DevSol has
+                      //   an inner container that manages the 16:9 frame
+                      //   or the landscape image slot.
+                      //
+                      // - Non-DevSolutions: `w-auto` → the wrapper shrinks
+                      //   to the image's width on ALL breakpoints (previously
+                      //   mobile used `max-sm:w-full` which made the wrapper
+                      //   100vw wide, leaving the `w-auto` image left-aligned
+                      //   instead of centered). Now the overlay's
+                      //   `items-center` centers the wrapper (and thus the
+                      //   image) horizontally on ALL breakpoints — mobile
+                      //   matches desktop.
+                      "relative inline-block rounded-2xl overflow-hidden",
+                      isDevSolutions ? "w-full" : "w-auto"
                     )}
                     ref={imageWrapperRef}
                     // Show X on mouse enter / move; auto-hide after 1s of
@@ -1043,7 +1323,28 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         matches its taller image wrapper — rendering both at
                         once caused a double-skeleton bug. */}
                     {!isDevSolutions && (lightboxImgLoaded ? null : (
-                      <div className="skeleton-shimmer h-[60vh] w-full max-w-[calc(100vw-4rem)] rounded-2xl sm:h-[70vh] sm:w-auto sm:min-w-[280px]" aria-hidden="true" />
+                      /* ── Non-Dev-Solutions skeleton — 9:16 vertical (UNIFIED) ──
+                         Always a PORTRAIT rectangle (9:16 = width:height),
+                         matching the dominant shape of the non-Dev-Solutions
+                         gallery images (all portrait, aspectRatio ≈ 0.46).
+
+                         UNIFIED standard (mobile = desktop):
+                         - `h-[calc(100vh-142px)]` → autofill the lightbox's
+                           vertical budget on ALL breakpoints (same as the
+                           actual image).
+                         - `w-auto aspect-[9/16]` → width derives from the
+                           height via the 9:16 ratio.
+                         - `max-w-[calc(100vw-4rem)]` (mobile) / `sm:max-w-
+                           [calc(100vw-8rem)]` (desktop) → horizontal safety
+                           cap (32px / 64px margin each side).
+
+                         On a narrow phone the max-w may cap the width, making
+                         the skeleton shorter than `calc(100vh-142px)` — but
+                         it's still a 9:16 portrait rectangle, centered. */
+                      <div
+                        className="skeleton-shimmer rounded-2xl h-[calc(100vh-142px)] max-sm:h-[calc(100vh-112px)] w-auto aspect-[9/16] max-w-[calc(100vw-4rem)] sm:max-w-[calc(100vw-8rem)]"
+                        aria-hidden="true"
+                      />
                     ))}
 
                     {/* Close button — larger tap target.
@@ -1075,103 +1376,337 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       <X className="h-5 w-5" />
                     </button>
 
-                    {isDevSolutions ? (
-                      <div className="relative w-full overflow-auto scrollbar-none flex items-start justify-center" style={{ maxHeight: 'calc(100vh - 142px)' }}>
+                    {isDevSolutionsTall ? (
+                      /* ── Tall Dev Solutions lightbox image (16:9 autofill frame) ──
+                         This branch handles ONLY the two TALL Dev Solutions
+                         screenshots (aspectRatio < 1 — image 1 "1-DS Index"
+                         at 0.417 and image 3 "3-Blog page" at 0.719). These
+                         are full-page screenshots that are MUCH taller than
+                         wide, so showing them scaled-to-fit (the default
+                         dev-solutions branch below) makes them too small to
+                         read on screen.
+
+                         Instead, we render them inside a 16:9 "autofill"
+                         frame:
+                           - The frame has aspect-ratio 16/9 and a max-width
+                             derived from the lightbox's vertical budget
+                             (calc(100vh - 142px) × 16/9) so its computed
+                             height never exceeds calc(100vh - 142px).
+                           - The image is rendered `w-full h-auto` inside an
+                             inner scroll container — its natural width fills
+                             the frame, and its natural height (much taller
+                             than the frame) overflows.
+                           - The inner container is `overflow-y-auto` +
+                             `scrollbar-none`, so the user can scroll
+                             VERTICALLY through the screenshot. The frame's
+                             `overflow-hidden` crops the height.
+                           - `overscroll-contain` + `touch-action: pan-y`
+                             keep the scroll inside the frame on mobile
+                             without chaining to the overlay.
+
+                         A "scroll" hint (text + chevron-down icon) slides
+                         IN at the bottom-center of the frame 1.5s after
+                         the lightbox opens, and slides OUT softly
+                         downward (drifts out instead of snapping) as
+                         soon as the user starts scrolling inside the
+                         frame. */
+                      <div
+                        className={cn(
+                          "relative rounded-2xl overflow-hidden bg-black",
+                          // ── UNIFIED (mobile = desktop) ──
+                          // HEIGHT-BOUND 16:9 frame that FILLS the lightbox's
+                          // vertical budget exactly on ALL breakpoints:
+                          //   - h-[calc(100vh-142px)] fixes the height to the
+                          //     same standard used by the other DevSolutions
+                          //     branch (142px = 24px top + 24px bottom overlay
+                          //     padding + ~94px capsule wrapper).
+                          //   - aspect-video derives the width from the height:
+                          //     width = height × 16/9.
+                          //   - max-w-[calc(100vw-3rem)] is a SAFETY CAP for
+                          //     narrow viewports (mobile or narrow desktop) so
+                          //     the frame never overflows horizontally. When
+                          //     max-w kicks in, the frame becomes narrower than
+                          //     16:9, but the HEIGHT still fills the vertical
+                          //     budget — which is what matters for the user's
+                          //     "autofill the height" requirement. The image
+                          //     inside (w-full h-auto) still overflows
+                          //     vertically and scrolls.
+                          //
+                          // ── Mobile height override ──
+                          // `max-sm:h-[calc(100vh-112px)]` adjusts the mobile
+                          // height to match the mobile padding budget:
+                          //   20px (pt-5) + 16px (pb-4) + 80px (capsule wrapper)
+                          //   = 116px non-image space on mobile.
+                          // Without this override, the image would reserve 142px
+                          // (the desktop budget) on mobile, leaving 26px of free
+                          // space that `my-auto` redistributes as 13px top +
+                          // 13px bottom — defeating the user's explicit
+                          // 20px-top / 16px-bottom padding spec. With the
+                          // override, the image fills exactly the available
+                          // mobile space, my-auto has nothing to distribute,
+                          // and the padding values (20px / 16px) become the
+                          // actual viewport-edge-to-image margins.
+                          //
+                          // Previously mobile used `max-sm:w-full
+                          // max-sm:aspect-video` (width-bound) which made the
+                          // frame SHORT on mobile (e.g., 352×198px on a 400×800
+                          // phone) — different from desktop. Now mobile matches
+                          // desktop exactly: height-bound on all breakpoints,
+                          // so the frame is tall (e.g., 352×658px on the same
+                          // phone) and the user can scroll through the full
+                          // screenshot vertically.
+                          "h-[calc(100vh-142px)] aspect-video max-w-[calc(100vw-3rem)] max-sm:h-[calc(100vh-112px)]"
+                        )}
+                      >
+                        {/* Scrollable inner container — holds the
+                            full-height image and lets the user pan
+                            vertically. The ref is used to reset
+                            scrollTop on image change (see useEffect
+                            above). */}
                         <div
-                          className="w-full"
-                          style={{
-                            // Dev Solutions images are WIDE (landscape full-page
-                            // screenshots). Cap the width so the lightbox never
-                            // spans edge-to-edge on desktop — this reserves a
-                            // comfortable horizontal margin on both sides.
-                            // 1100px max-width + (100vw - 8rem) viewport guard.
-                            maxWidth: 'min(calc(100vw - 8rem), 1100px)'
+                          ref={lightboxScrollFrameRef}
+                          onScroll={(e) => {
+                            // Only dismiss the hint when the user has
+                            // scrolled MORE than 5px. This 5px threshold
+                            // filters out sub-pixel scroll adjustments
+                            // that some browsers fire during reflow /
+                            // scroll-anchoring / layout recalculation
+                            // when the tall image loads and changes the
+                            // container's scrollHeight. Without this
+                            // threshold, a spurious 0→1px scroll event
+                            // could dismiss the hint immediately after
+                            // the 1.5s timer reveals it.
+                            if (e.currentTarget.scrollTop > 5) {
+                              setScrollHintVisible(false);
+                            }
                           }}
+                          style={{
+                            // Disable CSS scroll anchoring. When the
+                            // tall image loads and its height jumps from
+                            // 0 to very tall, Chrome's scroll-anchoring
+                            // feature may try to adjust scrollTop to
+                            // keep a "stable" anchor point — which can
+                            // fire a spurious scroll event and dismiss
+                            // the hint. `overflow-anchor: none` tells
+                            // the browser NOT to perform any anchor
+                            // adjustment on this container.
+                            overflowAnchor: "none",
+                          }}
+                          className={cn(
+                            "absolute inset-0 overflow-y-auto overscroll-contain scrollbar-none",
+                            // Allow vertical panning on touch
+                            // devices without triggering the
+                            // overlay's tap-to-close. pan-y lets
+                            // the browser handle vertical drag
+                            // natively.
+                            "[touch-action:pan-y]"
+                          )}
                         >
-                          {/* Container enforces max height; outer overlay handles scrolling.
-                              The skeleton lives INSIDE the same max-h wrapper as the image
-                              and uses the SAME width + max-height so the skeleton matches
-                              the image's final footprint — no layout jump when the image
-                              replaces the skeleton.
-                              `relative` so the absolutely-positioned hidden img (during
-                              loading) is anchored to THIS wrapper, not an ancestor.
-
-                              IMPORTANT: The skeleton uses an EXPLICIT width
-                              (min(calc(100vw - 8rem), 1100px)) instead of `width: 100%`.
-                              This is because the motion.div parent is `inline-block`,
-                              which derives its width from its content. During loading,
-                              the image is `absolute` (out of flow), so the only in-flow
-                              content is the skeleton. With `width: 100%` the skeleton
-                              would be 0px wide (circular dependency: parent width comes
-                              from child, child width is 100% of parent). Using an
-                              explicit width breaks the cycle and makes the skeleton
-                              exactly match the image's loaded width.
-
-                              HEIGHT STANDARD: calc(100vh - 142px) = viewport minus
-                              32px top overlay padding + 12px bottom overlay padding
-                              + 98px capsule wrapper (20px top safe-area/gap +
-                              58px capsule + 20px bottom safe-area).
-                              This guarantees:
-                                • top margin (viewport → image) = 32px
-                                • gap (image → capsule) = 20px (wrapper top padding)
-                                • bottom margin (viewport → capsule) = 32px
-                                  (12px overlay pb + 20px wrapper bottom padding)
-                                • NO overlay scroll on desktop
-                              The image scrolls INTERNALLY (overflow-auto on this
-                              wrapper) for very tall DevSolutions screenshots. */}
-                          <div className="relative max-h-[calc(100vh-142px)] overflow-auto scrollbar-none">
-                            {lightboxImgLoaded ? null : (
-                              <div
-                                className="skeleton-shimmer rounded-2xl"
-                                style={{
-                                  width: 'min(calc(100vw - 8rem), 1100px)',
-                                  height: 'calc(100vh - 142px)',
-                                }}
-                                aria-hidden="true"
-                              />
-                            )}
-
-                            <img
-                              src={encodeSrc(lightboxImg.src)}
-                              alt={tt(lightboxImg.alt)}
-                              className={cn(
-                                "w-full h-auto block transition-opacity duration-300",
-                                lightboxImgLoaded ? "opacity-100" : "absolute inset-0 opacity-0"
-                              )}
-                              draggable={false}
-                              onLoad={() => {
-                                setLightboxImgLoaded(true);
-                                setLightboxReady(true);
-                              }}
-                              onError={() => {
-                                setLightboxImgLoaded(true);
-                                setLightboxReady(true);
-                              }}
+                          {/* Skeleton placeholder while the tall
+                              image loads. Spans the full frame so
+                              the user sees a uniform shimmer. */}
+                          {lightboxImgLoaded ? null : (
+                            <div
+                              className="skeleton-shimmer absolute inset-0 rounded-2xl"
+                              aria-hidden="true"
                             />
-                          </div>
+                          )}
+                          <img
+                            src={encodeSrc(lightboxImg.src)}
+                            alt={tt(lightboxImg.alt)}
+                            className={cn(
+                              // w-full → image fills the frame's
+                              //          width.
+                              // h-auto → image renders at its
+                              //          natural (very tall) height,
+                              //          which overflows the frame
+                              //          and creates scrollable
+                              //          content.
+                              // block → removes inline-img
+                              //         baseline gap.
+                              "w-full h-auto block transition-opacity duration-300",
+                              lightboxImgLoaded ? "opacity-100" : "opacity-0"
+                            )}
+                            draggable={false}
+                            onLoad={() => {
+                              setLightboxImgLoaded(true);
+                              setLightboxReady(true);
+                            }}
+                            onError={() => {
+                              setLightboxImgLoaded(true);
+                              setLightboxReady(true);
+                            }}
+                          />
                         </div>
+
+                        {/* Scroll hint — text + chevron-down icon.
+                            Slides IN at the bottom-center of the frame
+                            1.5s after the lightbox opens (gated by
+                            `scrollHintVisible`), and slides OUT softly
+                            downward as soon as the user scrolls.
+
+                            Animation feel: SOFT. Long duration (0.7s),
+                            easeOutQuart curve, subtle scale (0.96↔1)
+                            for a gentle "pop" without snap, and a SMALL
+                            exit movement (y:24) so the hint drifts out
+                            instead of shooting off-screen.
+
+                            STRUCTURE: The outer wrapper div handles
+                            ABSOLUTE POSITIONING only (bottom-6, left-0
+                            right-0, flex justify-center) — it has NO
+                            transform. The inner motion.div handles ALL
+                            animation (opacity + y + scale). This split
+                            is critical: if we put `left-1/2
+                            -translate-x-1/2` on the motion.div, the
+                            CSS translateX would be OVERRIDDEN by
+                            framer-motion's transform pipeline (which
+                            combines y + scale into a single transform),
+                            breaking horizontal centering. By keeping
+                            positioning on the wrapper and animation on
+                            the child, the two never collide.
+
+                            pointer-events-none on the wrapper so it
+                            never blocks scroll/click on the image. z-30
+                            so it sits above the image. text-shadow
+                            gives legibility against any background. */}
+                        <div className="pointer-events-none absolute bottom-6 left-0 right-0 z-30 flex justify-center">
+                          <AnimatePresence>
+                            {scrollHintVisible && (
+                              <motion.div
+                                initial={
+                                  prefersReducedMotion
+                                    ? { opacity: 0 }
+                                    : { opacity: 0, y: 24, scale: 0.96 }
+                                }
+                                animate={
+                                  prefersReducedMotion
+                                    ? { opacity: 1 }
+                                    : { opacity: 1, y: 0, scale: 1 }
+                                }
+                                exit={
+                                  prefersReducedMotion
+                                    ? { opacity: 0 }
+                                    : { opacity: 0, y: 24, scale: 0.96 }
+                                }
+                                transition={{
+                                  duration: 0.7,
+                                  ease: [0.22, 1, 0.36, 1],
+                                }}
+                                className="flex flex-col items-center gap-1.5"
+                              >
+                                <span className="text-sm font-medium text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.7)]">
+                                  {t("portfolio.modal.scrollHint")}
+                                </span>
+                                <motion.div
+                                  animate={
+                                    prefersReducedMotion
+                                      ? undefined
+                                      : { y: [0, 6, 0] }
+                                  }
+                                  transition={
+                                    prefersReducedMotion
+                                      ? undefined
+                                      : {
+                                          duration: 1.4,
+                                          repeat: Infinity,
+                                          ease: "easeInOut",
+                                        }
+                                  }
+                                >
+                                  <ChevronDown className="h-5 w-5 text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.7)]" />
+                                </motion.div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    ) : isDevSolutions ? (
+                      /* ── Dev Solutions non-tall lightbox image (UNIFIED) ──
+                         Landscape screenshots (ratio > 1). Same centering
+                         + sizing standard as non-Dev-Solutions images:
+                         image is capped at `max-h-[calc(100vh-142px)]` so
+                         it ALWAYS fits the viewport alongside the capsule.
+
+                         Container (UNIFIED — mobile = desktop):
+                         - `h-[calc(100vh-142px)]` → fills the vertical
+                           budget on ALL breakpoints so the image area is
+                           consistent across all Dev Solutions slides.
+                         - Previously mobile had NO fixed height (shrank
+                           to fit the image), which made mobile different
+                           from desktop. Now mobile matches desktop: same
+                           fixed height, same centering.
+
+                         `flex items-center justify-center` centers the
+                         image horizontally AND vertically within the
+                         container on all breakpoints. */
+                      <div className="relative w-full flex items-center justify-center overflow-hidden rounded-2xl h-[calc(100vh-142px)] max-sm:h-[calc(100vh-112px)]">
+                        {lightboxImgLoaded ? null : (
+                          /* ── Non-tall Dev Solutions skeleton — 16:9 (UNIFIED) ──
+                             LANDSCAPE rectangle (16:9), matching the
+                             tall-image frame's shape. Same height-bound
+                             standard on ALL breakpoints:
+                             - `h-[calc(100vh-142px)]` → fill height.
+                             - `max-sm:h-[calc(100vh-112px)]` → mobile budget
+                               (20pt + 16pb + 80 wrapper = 116px).
+                             - `w-auto aspect-video` → width derives from
+                               height via 16:9 ratio.
+                             - `max-w-full` → never overflow horizontally. */
+                          <div
+                            className="skeleton-shimmer rounded-2xl h-[calc(100vh-142px)] max-sm:h-[calc(100vh-112px)] w-auto aspect-video max-w-full"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <img
+                          src={encodeSrc(lightboxImg.src)}
+                          alt={tt(lightboxImg.alt)}
+                          className={cn(
+                            // ── Non-tall DevSol image (UNIFIED) ──
+                            // Mobile: `max-w-[calc(100vw-4rem)] w-auto h-auto`
+                            // → capped at width (32px margin each side), natural
+                            // height. The container has no fixed height on
+                            // mobile so it shrinks to fit — no empty space.
+                            // Desktop: `sm:max-h-full sm:max-w-[calc(100vw-8rem)]`
+                            // → capped at container height (calc(100vh-142px))
+                            // and 64px horizontal margin.
+                            "max-w-[calc(100vw-4rem)] w-auto h-auto block rounded-2xl transition-opacity duration-300 sm:max-h-full sm:max-w-[calc(100vw-8rem)]",
+                            lightboxImgLoaded ? "opacity-100 relative z-10" : "absolute inset-0 opacity-0"
+                          )}
+                          draggable={false}
+                          onLoad={() => {
+                            setLightboxImgLoaded(true);
+                            setLightboxReady(true);
+                          }}
+                          onError={() => {
+                            setLightboxImgLoaded(true);
+                            setLightboxReady(true);
+                          }}
+                        />
                       </div>
                     ) : (
                       <img
                         src={encodeSrc(lightboxImg.src)}
                         alt={tt(lightboxImg.alt)}
                         className={cn(
-                          // Tall/portrait screenshots: render at natural width
-                          // (sm:w-auto) so the horizontal margin is naturally
-                          // large (the image is narrow). Caps ensure the image
-                          // never touches the viewport edges even on very small
-                          // desktop windows.
+                          // ── Non-Dev-Solutions image (UNIFIED standard) ──
+                          // Mobile = desktop: the image is capped at
+                          // `max-h-[calc(100vh-142px)]` on ALL breakpoints so
+                          // it ALWAYS fits in the viewport alongside the capsule
+                          // — NO overlay scroll, NO internal image scroll.
+                          // 142px = 24px top + 24px bottom overlay padding +
+                          // ~94px capsule wrapper (20+58+16).
                           //
-                          // HEIGHT STANDARD: sm:max-h-[calc(100vh-142px)] ensures
-                          // the ENTIRE image auto-fits in the desktop viewport
-                          // alongside the capsule — NO overlay scroll, NO internal
-                          // image scroll. 142px = 32px top + 12px bottom overlay
-                          // padding + 98px capsule wrapper (20+58+20).
-                          // Result: top margin 32px, gap 20px, bottom margin 32px.
+                          // `w-auto` lets the width derive from the capped
+                          // height (portrait images end up narrow, centered).
                           //
-                          // sm:max-w is the horizontal safety cap (100vw - 8rem
-                          // = 64px margin each side minimum).
-                          "h-auto w-full block sm:w-auto sm:max-h-[calc(100vh-142px)] sm:max-w-[calc(100vw-8rem)] transition-opacity duration-300",
+                          // `max-w-[calc(100vw-4rem)]` (mobile) /
+                          // `sm:max-w-[calc(100vw-8rem)]` (desktop) = horizontal
+                          // safety cap (32px / 64px margin each side).
+                          //
+                          // Previously mobile used `w-full` which made tall
+                          // portrait images overflow the viewport — pushing the
+                          // capsule off-screen and breaking centering. Now mobile
+                          // matches desktop: capped height, auto width, centered.
+                          "h-auto w-auto block max-h-[calc(100vh-142px)] max-sm:max-h-[calc(100vh-112px)] max-w-[calc(100vw-4rem)] sm:max-w-[calc(100vw-8rem)] transition-opacity duration-300",
                           lightboxImgLoaded ? "opacity-100" : "absolute inset-0 opacity-0"
                         )}
                         draggable={false}
@@ -1208,12 +1743,35 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     20px (the safe-area padding doubles as the visual gap). */}
                 {lightboxTotal > 1 && lightboxReady && (
                   <div
-                    className="mt-0 p-5"
+                    // ── Capsule wrapper (UNIFIED gap, mobile-tighter bottom) ──
+                    // `mt-0` + `p-5` keeps a 20px safe-area around the capsule
+                    // on all breakpoints (also doubles as the visual gap above
+                    // the capsule). On MOBILE, `max-sm:pb-3` reduces the bottom
+                    // padding from 20px → 12px (8px less) so the capsule sits a
+                    // touch closer to the bottom edge of the lightbox — this
+                    // matches the user's "reduce bottom margin by 8px" request
+                    // and keeps mobile visually balanced with desktop.
+                    className="mt-0 p-5 max-sm:pb-3"
                     onPointerDown={(e) => e.stopPropagation()}
                     onPointerUp={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div dir="ltr" className="flex w-64 items-center justify-between rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm">
+                    {/* ── Capsule (slide nav) — 48px tall on mobile, 58px on desktop ──
+                        The capsule groups prev/next arrows + slide counter.
+
+                        Mobile (max-sm): `max-sm:h-12 max-sm:py-0` forces the
+                        capsule to exactly 48px tall (h-12 = 3rem = 48px) with
+                        NO vertical padding — the h-11 (44px) buttons sit
+                        centered with 2px breathing room above/below. This
+                        matches the user's "slide height 48px on mobile"
+                        request and gives the mobile lightbox a tighter,
+                        more thumb-friendly nav bar.
+
+                        Desktop (sm+): keeps `py-1.5` (6px+6px) so the capsule
+                        is 58px tall (44px button + 12px padding + 2px border)
+                        — the original comfortable desktop size. Width stays
+                        `w-64` (256px) on all breakpoints. */}
+                    <div dir="ltr" className="flex w-64 items-center justify-between rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm max-sm:h-12 max-sm:py-0">
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); lightboxPrev(); }}

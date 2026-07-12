@@ -55,6 +55,7 @@ export const dict = {
         gallery: "گالری تصاویر",
         close: "بستن",
         slideOf: "از",
+        scrollHint: "اسکرول کنید",
         category: {
           design: "طراحی",
           research: "تحقیق",
@@ -161,6 +162,7 @@ export const dict = {
         gallery: "Image gallery",
         close: "Close",
         slideOf: "of",
+        scrollHint: "Scroll",
         category: {
           design: "Design",
           research: "Research",
