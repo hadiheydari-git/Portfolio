@@ -56,6 +56,7 @@ export const dict = {
         close: "بستن",
         slideOf: "از",
         scrollHint: "اسکرول کنید",
+        resetHint: "دو ضربه برای زوم/ریست",
         category: {
           design: "طراحی",
           research: "تحقیق",
@@ -163,6 +164,7 @@ export const dict = {
         close: "Close",
         slideOf: "of",
         scrollHint: "Scroll",
+        resetHint: "Double-tap to zoom / reset",
         category: {
           design: "Design",
           research: "Research",

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion, type Variants } from "framer-motion";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, ZoomIn, ChevronLeft, ChevronRight, ArrowUpRight, ChevronDown } from "lucide-react";
+import { X, ZoomIn, ChevronLeft, ChevronRight, ArrowUpRight, ChevronDown, RotateCcw } from "lucide-react";
 import { useLanguage } from "@/components/providers/language-provider";
 import { SmartImage } from "@/components/ui/smart-image";
 import { ToolIcon } from "@/components/ui/tool-icon";
@@ -197,6 +197,149 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   const lightboxScrollFrameRef = React.useRef<HTMLDivElement>(null);
   const scrollHintTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Lightbox pinch-zoom + pan (mobile) ──
+  // Custom JS-based pinch-to-zoom and one-finger pan for lightbox images.
+  //
+  // WHY NOT use the browser's native pinch-zoom (touch-action: pinch-zoom)?
+  // Native pinch-zoom creates a "visual viewport" zoom. After zooming, a
+  // one-finger drag is supposed to pan the visual viewport — BUT if there's
+  // a scrollable container (overflow-y-auto) under the touch, the browser
+  // scrolls that container instead of panning the zoomed view. Our lightbox
+  // overlay is overflow-y-auto (for tall images), so native pinch-zoom +
+  // one-finger pan was broken: the user could zoom in with 2 fingers but
+  // couldn't pan around with 1 finger.
+  //
+  // By handling pinch-zoom in JS via Pointer Events, we get full control:
+  //   - 2 fingers: pinch to zoom (1x to 5x), zooms toward pinch center
+  //   - 1 finger (when zoomed > 1x): pan in any direction (2D)
+  //   - 1 finger (when zoom = 1x): normal behavior — for tall images,
+  //     scrolls the frame vertically; for others, does nothing (tap closes)
+  //
+  // touch-action: none on the <img> tells the browser NOT to handle any
+  // touch gesture natively, so JS receives all pointer events.
+  const [lightboxZoom, setLightboxZoom] = React.useState(1);
+  const [lightboxPan, setLightboxPan] = React.useState({ x: 0, y: 0 });
+  const zoomPointersRef = React.useRef<Map<number, { x: number; y: number }>>(new Map());
+  // ── Pinch gesture start state ──
+  // Instead of tracking the PREVIOUS finger distance (per-event ratio,
+  // which amplifies finger wobble into zoom jitter), we track the
+  // distance + zoom level at the MOMENT the 2-finger pinch began.
+  //
+  // Each pointermove then computes: newZoom = startZoom * (curDist / startDist).
+  // This makes zoom a direct function of absolute finger distance, so
+  // micro-wobbles produce proportionally tiny zoom changes (not sudden
+  // reversals). See `onZoomPointerMove` for the full rationale.
+  const pinchStartDistRef = React.useRef<number | null>(null);
+  const pinchStartZoomRef = React.useRef<number | null>(null);
+  const lastPanPointRef = React.useRef<{ x: number; y: number } | null>(null);
+  // Read current zoom in pointer handlers without re-creating callbacks
+  const lightboxZoomRef = React.useRef(1);
+  React.useEffect(() => { lightboxZoomRef.current = lightboxZoom; }, [lightboxZoom]);
+  // Read current pan in pointer handlers without re-creating callbacks.
+  // Needed for pinch-anchor math: when pinch-zooming, we compute the new
+  // pan from the old pan + the pinch midpoint, so we need the LATEST pan
+  // value synchronously (state may be stale within the same frame).
+  const lightboxPanRef = React.useRef({ x: 0, y: 0 });
+  React.useEffect(() => { lightboxPanRef.current = lightboxPan; }, [lightboxPan]);
+
+  // ── Cached image dimensions for clamp math + pinch anchor ──
+  // Stores the image's natural rendered size (offsetWidth/Height), its
+  // container's size, AND the image's natural center in screen coords —
+  // all captured ONCE at the start of each gesture (in
+  // `onZoomPointerDown`). This avoids expensive forced-layout reads on
+  // every pointer-move event, which was the main cause of lag during
+  // rapid pinch-zoom.
+  //
+  // `natCenterX/Y` = the image's center position on screen BEFORE any
+  // transform. This is the anchor point for pinch-zoom: when the user
+  // pinches at midpoint M, the image point under M stays under M as zoom
+  // changes. Computed as:
+  //   natCenter = transformedRectCenter - currentPan
+  // because `transform: translate(pan) scale(zoom)` shifts the natural
+  // center by exactly `pan` (scaling around center doesn't move the
+  // center).
+  //
+  // `offsetWidth/Height` are LAYOUT properties — they reflect the
+  // element's box size BEFORE any CSS transform. Scaling an element
+  // via `transform: scale()` does NOT change its `offsetWidth`, so
+  // these cached values remain valid for the entire gesture regardless
+  // of how much the user zooms.
+  const imgDimsRef = React.useRef<{
+    imgW: number;
+    imgH: number;
+    contW: number;
+    contH: number;
+    natCenterX: number;
+    natCenterY: number;
+  } | null>(null);
+
+  // ── Smooth zoom animation for double-tap ──
+  // When `zoomAnimating` is true, a CSS `transition: transform 0.3s` is
+  // applied to the <img>, so double-tap zoom-in/out animates smoothly
+  // instead of jumping instantly. Set to true by `onZoomDoubleTap`, auto-
+  // reset to false after 350ms (slightly longer than the 300ms transition
+  // to ensure the transition completes before disabling). Also reset to
+  // false immediately if the user starts a manual gesture (pinch/pan) —
+  // see `onZoomPointerDown` for the mid-animation visual-state sync that
+  // prevents jumps when a gesture interrupts an animation.
+  const [zoomAnimating, setZoomAnimating] = React.useState(false);
+  const zoomAnimTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startZoomAnimation = React.useCallback(() => {
+    setZoomAnimating(true);
+    if (zoomAnimTimerRef.current) clearTimeout(zoomAnimTimerRef.current);
+    // 500ms = 450ms transition + 50ms buffer. The transition must
+    // complete before we remove it, otherwise the transform would jump
+    // mid-animation when `zoomAnimating` flips back to false.
+    zoomAnimTimerRef.current = setTimeout(() => setZoomAnimating(false), 500);
+  }, []);
+
+  // ── "Double-tap to reset" hint ──
+  // Shows a small pill at the BOTTOM-center of the lightbox image after
+  // the user has been zoomed in (zoom > 1) for 8 seconds. The 8s delay
+  // gives the user time to explore the zoomed image first, then gently
+  // reminds them they can double-tap to return to 1x. Auto-hides after
+  // 3s. Re-shows (after another 8s delay) if the user zooms in again
+  // after returning to 1x.
+  const [zoomResetHintVisible, setZoomResetHintVisible] = React.useState(false);
+  const zoomResetHintTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const zoomResetHideTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => {
+    if (lightboxZoom > 1) {
+      // Clear any pending show/hide timers from a previous zoom cycle.
+      if (zoomResetHintTimerRef.current) clearTimeout(zoomResetHintTimerRef.current);
+      if (zoomResetHideTimerRef.current) clearTimeout(zoomResetHideTimerRef.current);
+      // Start hidden, then show after 8s, then auto-hide after 3s more.
+      setZoomResetHintVisible(false);
+      zoomResetHintTimerRef.current = setTimeout(() => {
+        setZoomResetHintVisible(true);
+        zoomResetHideTimerRef.current = setTimeout(() => {
+          setZoomResetHintVisible(false);
+        }, 3000);
+      }, 8000);
+    } else {
+      // Zoom returned to 1x → hide immediately and cancel all timers.
+      setZoomResetHintVisible(false);
+      if (zoomResetHintTimerRef.current) {
+        clearTimeout(zoomResetHintTimerRef.current);
+        zoomResetHintTimerRef.current = null;
+      }
+      if (zoomResetHideTimerRef.current) {
+        clearTimeout(zoomResetHideTimerRef.current);
+        zoomResetHideTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (zoomResetHintTimerRef.current) {
+        clearTimeout(zoomResetHintTimerRef.current);
+        zoomResetHintTimerRef.current = null;
+      }
+      if (zoomResetHideTimerRef.current) {
+        clearTimeout(zoomResetHideTimerRef.current);
+        zoomResetHideTimerRef.current = null;
+      }
+    };
+  }, [lightboxZoom]);
+
   // ── Progressive gallery batch loading ──
   // Gallery images load in sequential batches of 3, starting from the top.
   // Batch 1 = images 0-2, Batch 2 = images 3-5, etc. The next batch does
@@ -255,6 +398,25 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         if (scrollHintTimerRef.current) {
           clearTimeout(scrollHintTimerRef.current);
           scrollHintTimerRef.current = null;
+        }
+        // Also clear the zoom-reset hint timer + state so a stale timer
+        // doesn't fire after the lightbox has closed and leak the hint
+        // into the next open.
+        setZoomResetHintVisible(false);
+        if (zoomResetHintTimerRef.current) {
+          clearTimeout(zoomResetHintTimerRef.current);
+          zoomResetHintTimerRef.current = null;
+        }
+        if (zoomResetHideTimerRef.current) {
+          clearTimeout(zoomResetHideTimerRef.current);
+          zoomResetHideTimerRef.current = null;
+        }
+        // Also cancel any in-progress double-tap zoom animation so a
+        // stale timer doesn't fire after the lightbox has closed.
+        setZoomAnimating(false);
+        if (zoomAnimTimerRef.current) {
+          clearTimeout(zoomAnimTimerRef.current);
+          zoomAnimTimerRef.current = null;
         }
         if (hideTimerRef.current) {
           clearTimeout(hideTimerRef.current);
@@ -498,6 +660,412 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       setLoadedInBatchCount(0);
     }
   }, [loadedInBatchCount, activeBatch, project, GALLERY_BATCH_SIZE]);
+
+  // ── Lightbox zoom/pan: reset on image change ──
+  // When the user navigates to a different lightbox image (or closes the
+  // lightbox), reset zoom and pan so the new image starts at 1x, centered.
+  React.useEffect(() => {
+    setLightboxZoom(1);
+    setLightboxPan({ x: 0, y: 0 });
+    lightboxZoomRef.current = 1;
+    lightboxPanRef.current = { x: 0, y: 0 };
+    zoomPointersRef.current.clear();
+    pinchStartDistRef.current = null;
+    pinchStartZoomRef.current = null;
+    lastPanPointRef.current = null;
+    // Clear cached dims so the next gesture captures fresh measurements
+    // (the new image may have different dimensions).
+    imgDimsRef.current = null;
+  }, [lightboxImg?.src]);
+
+  // ── Lightbox zoom/pan: pointer handlers ──
+  // These are attached to each <img> in the lightbox (all 3 branches:
+  // tall Dev Sol, non-tall Dev Sol, non-Dev Sol). They track active
+  // pointers to detect 2-finger pinch vs 1-finger pan/drag.
+  //
+  // touch-action: none on the <img> ensures the browser does NOT handle
+  // any touch gesture natively — all touch events come through as pointer
+  // events for JS to handle.
+  const onZoomPointerDown = React.useCallback((e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    zoomPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // ── Cancel any in-progress double-tap zoom animation ──
+    // If the user starts a manual gesture (pinch/pan) while a double-tap
+    // zoom animation is still running, we must:
+    //   1. Stop the CSS transition (set `zoomAnimating = false`) so the
+    //      transform freezes at its CURRENT visual state.
+    //   2. Sync `lightboxZoomRef`/`lightboxPanRef` to the CURRENT visual
+    //      state (not the animation target), so subsequent pinch/pan math
+    //      starts from where the user actually sees the image.
+    // Without this sync, the refs would have the animation TARGET values
+    // while the visual state is mid-transition — causing a jarring jump
+    // when the gesture begins.
+    if (zoomAnimating) {
+      setZoomAnimating(false);
+      if (zoomAnimTimerRef.current) {
+        clearTimeout(zoomAnimTimerRef.current);
+        zoomAnimTimerRef.current = null;
+      }
+      const imgEl = e.currentTarget as HTMLImageElement;
+      const dims = imgDimsRef.current;
+      if (imgEl && dims) {
+        const rect = imgEl.getBoundingClientRect();
+        // Visual zoom = current rect width / natural (untransformed) width.
+        const visualZoom = rect.width / dims.imgW;
+        // Visual pan = rect center - natural center. natCenter was cached
+        // at the start of the double-tap (when zoom=1, pan=0) so it's the
+        // TRUE natural center, valid throughout the animation.
+        const visualPanX = rect.left + rect.width / 2 - dims.natCenterX;
+        const visualPanY = rect.top + rect.height / 2 - dims.natCenterY;
+        lightboxZoomRef.current = visualZoom;
+        lightboxPanRef.current = { x: visualPanX, y: visualPanY };
+        setLightboxZoom(visualZoom);
+        setLightboxPan({ x: visualPanX, y: visualPanY });
+      }
+    }
+
+    // ── Cache image dimensions for clamp math + pinch anchor ──
+    // Capture the image's natural rendered size (offsetWidth/Height), its
+    // container's size, AND the image's natural center in screen coords —
+    // all ONCE at the start of the gesture. This avoids expensive
+    // forced-layout reads on every pointer-move event, which was the main
+    // cause of lag during rapid pinch-zoom.
+    //
+    // `natCenterX/Y` (the image's center BEFORE any transform) is derived
+    // from the CURRENT transformed bounding rect minus the current pan.
+    // This works because `transform: translate(pan) scale(zoom)` with
+    // `transform-origin: center center` shifts the natural center by
+    // exactly `pan` (scaling around the center doesn't move the center).
+    // So: natCenter = transformedRectCenter - pan.
+    //
+    // `offsetWidth/Height` are LAYOUT properties — they reflect the
+    // element's box size BEFORE any CSS transform. Scaling an element
+    // via `transform: scale()` does NOT change its `offsetWidth`, so
+    // these cached values remain valid for the entire gesture regardless
+    // of how much the user zooms.
+    //
+    // We capture on EVERY pointer-down (not just when size === 2)
+    // because one-finger pan also needs these values for clamping.
+    const img = e.currentTarget as HTMLImageElement;
+    const container = img?.parentElement ?? null;
+    if (img && container) {
+      const rect = img.getBoundingClientRect();
+      const pan = lightboxPanRef.current;
+      imgDimsRef.current = {
+        imgW: img.offsetWidth,
+        imgH: img.offsetHeight,
+        contW: container.offsetWidth,
+        contH: container.offsetHeight,
+        natCenterX: rect.left + rect.width / 2 - pan.x,
+        natCenterY: rect.top + rect.height / 2 - pan.y,
+      };
+    }
+
+    if (zoomPointersRef.current.size === 1) {
+      lastPanPointRef.current = { x: e.clientX, y: e.clientY };
+    } else if (zoomPointersRef.current.size === 2) {
+      // ── Pinch gesture START ──
+      // Capture the starting finger distance AND the current zoom level.
+      // All subsequent pointermove events compute zoom directly from
+      // these values (see `onZoomPointerMove`), so the zoom level is a
+      // smooth function of absolute finger distance — no per-event
+      // jitter from finger wobble.
+      const pts = Array.from(zoomPointersRef.current.values());
+      pinchStartDistRef.current = Math.hypot(
+        pts[1].x - pts[0].x,
+        pts[1].y - pts[0].y
+      );
+      pinchStartZoomRef.current = lightboxZoomRef.current;
+    }
+  }, []);
+
+  const onZoomPointerMove = React.useCallback((e: React.PointerEvent) => {
+    if (!zoomPointersRef.current.has(e.pointerId)) return;
+    zoomPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (zoomPointersRef.current.size >= 2
+        && pinchStartDistRef.current !== null
+        && pinchStartZoomRef.current !== null) {
+      // ── Pinch zoom (2 fingers) — ABSOLUTE-from-start approach ──
+      //
+      // THE PROBLEM THIS SOLVES:
+      // The previous implementation used a PER-EVENT ratio:
+      //   ratio = currentDist / previousEventDist
+      //   newZoom = oldZoom * ratio
+      // This means each pointermove event compares finger distance
+      // against the IMMEDIATELY PREVIOUS event. Human fingers are never
+      // perfectly steady — during a deliberate pinch-OUT, fingers
+      // micro-wobble (momentarily coming 2-5% closer before continuing
+      // apart). Each micro-wobble made ratio < 1, causing a zoom-OUT
+      // event in the middle of a zoom-IN gesture. The result: stutter,
+      // jitter, and the "lag bug" the user reported ("while zooming in,
+      // it zooms out several times").
+      //
+      // The dead-zone fix (ignoring < 3% changes) didn't fully work
+      // because finger wobble can exceed 3%, and because the dead zone
+      // still updated `lastDist`, causing accumulated drift.
+      //
+      // THE SOLUTION — absolute-from-start:
+      // Instead of comparing to the previous event, compare to the
+      // START of the gesture. The zoom level becomes a DIRECT function
+      // of absolute finger distance:
+      //   newZoom = startZoom * (currentDist / startDist)
+      //
+      // Example (startDist=100, startZoom=1):
+      //   dist=110 → zoom=1.10  (fingers apart → zoom in)
+      //   dist=108 → zoom=1.08  (slight wobble → TINY zoom decrease, proportional)
+      //   dist=115 → zoom=1.15  (fingers further → zoom in more)
+      //   dist=150 → zoom=1.50  (large pinch → large zoom)
+      //
+      // The wobble at dist=108 produces a 2% zoom decrease — barely
+      // visible, and CRUCIALLY it never fights the user's intent. The
+      // zoom monotonically tracks finger distance. No sudden reversals.
+      //
+      // DAMPENING (0.85): a mild factor applied to the distance ratio
+      // so the user has fine control — a 100% increase in finger
+      // distance gives 85% increase in zoom. This makes the gesture
+      // feel "weighted" without making it feel laggy.
+      const pts = Array.from(zoomPointersRef.current.values()).slice(0, 2);
+      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+
+      const startDist = pinchStartDistRef.current;
+      const startZoom = pinchStartZoomRef.current;
+      // Guard against division by zero (shouldn't happen — a 2-finger
+      // pinch always has nonzero distance, but be safe).
+      if (startDist > 0 && startZoom !== null) {
+        // Absolute distance ratio from gesture start
+        const distRatio = dist / startDist;
+        // Mild dampening for fine control (both directions identical,
+        // so no asymmetry bias)
+        const DAMPENING = 0.85;
+        const zoomFactor = 1 + (distRatio - 1) * DAMPENING;
+        const targetZoom = startZoom * zoomFactor;
+
+        // ── Compute new zoom + anchor-kept pan using cached refs ──
+        // PERFORMANCE: We read from `lightboxZoomRef.current` (a cheap ref
+        // read) and `imgDimsRef.current` (cached at gesture start) instead
+        // of calling setState inside a setState updater or reading
+        // `offsetWidth` (which forces layout reflow). The ref is updated
+        // manually immediately so subsequent events in the same animation
+        // frame see the latest value.
+        const zOld = lightboxZoomRef.current;
+        const newZoom = Math.max(1, Math.min(5, targetZoom));
+        // `actualRatio` accounts for clamping at 1 or 5 AND for the
+        // difference between the absolute target and the current zoom.
+        // Using this in the pan formula keeps the anchor accurate.
+        const actualRatio = newZoom / zOld;
+        // Guard: if actualRatio is 1 (no change), skip the setState
+        // entirely — avoids unnecessary re-renders on every micro-event.
+        if (actualRatio === 1) return;
+
+        setLightboxZoom(newZoom);
+        // Update ref immediately so the next pointer event in the same
+        // frame uses the correct zoom value (not a stale one).
+        lightboxZoomRef.current = newZoom;
+
+        if (newZoom === 1) {
+          // Returned to 1x → reset pan so the image is centered
+          setLightboxPan({ x: 0, y: 0 });
+          lightboxPanRef.current = { x: 0, y: 0 };
+        } else {
+          // ── Pinch anchor: keep the pinch midpoint under the fingers ──
+          // When zoom changes from zOld to newZoom, the image point under
+          // the pinch midpoint M should stay at M. The transform is
+          // `translate(pan) scale(zoom)` with origin `center center`, so a
+          // point at offset `d` from the natural center ends up at
+          // `natCenter + d * zoom + pan`. The point under M (in image
+          // coords) is `d = (M - natCenter - panOld) / zOld`. After zoom
+          // change, we want `M = natCenter + d * newZoom + panNew`, so:
+          //   panNew = M - natCenter - d * newZoom
+          //          = (M - natCenter) * (1 - actualRatio) + panOld * actualRatio
+          // This keeps the pinch midpoint anchored. The pan is then
+          // clamped so the image edge stays within the container edge.
+          const dims = imgDimsRef.current;
+          const panOld = lightboxPanRef.current;
+          if (dims) {
+            const midX = (pts[0].x + pts[1].x) / 2;
+            const midY = (pts[0].y + pts[1].y) / 2;
+            const offsetX = midX - dims.natCenterX;
+            const offsetY = midY - dims.natCenterY;
+            let panX = offsetX * (1 - actualRatio) + panOld.x * actualRatio;
+            let panY = offsetY * (1 - actualRatio) + panOld.y * actualRatio;
+            // Clamp pan so the image edge cannot be dragged past the
+            // container edge.
+            const zoomedW = dims.imgW * newZoom;
+            const zoomedH = dims.imgH * newZoom;
+            const maxPanX = Math.max(0, (zoomedW - dims.contW) / 2);
+            const maxPanY = Math.max(0, (zoomedH - dims.contH) / 2);
+            panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+            panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+            setLightboxPan({ x: panX, y: panY });
+            lightboxPanRef.current = { x: panX, y: panY };
+          }
+        }
+      }
+    } else if (zoomPointersRef.current.size === 1 && lastPanPointRef.current) {
+      // ── One-finger drag ──
+      const dx = e.clientX - lastPanPointRef.current.x;
+      const dy = e.clientY - lastPanPointRef.current.y;
+
+      if (lightboxZoomRef.current > 1) {
+        // Zoomed in → pan the image (2D, any direction), CLAMPED so the
+        // image edge cannot be dragged past the container edge. Uses
+        // cached dims from `imgDimsRef` (captured at pointer-down) — no
+        // DOM reads here, which keeps the move handler cheap and smooth.
+        //
+        // Clamp math (using cached dims):
+        //   - `dims.imgW/imgH` = image's natural rendered size (before
+        //     transform; stable regardless of zoom level).
+        //   - `zoomedW/H = imgSize * zoom` = visual size after scale.
+        //   - `dims.contW/contH` = the clipping parent's size.
+        //   - `maxPan = max(0, (zoomed - container) / 2)` because the
+        //     transform-origin is `center center`, so half of the overflow
+        //     is the maximum displacement in each direction.
+        const dims = imgDimsRef.current;
+        if (dims) {
+          const zoom = lightboxZoomRef.current;
+          const zoomedW = dims.imgW * zoom;
+          const zoomedH = dims.imgH * zoom;
+          const maxPanX = Math.max(0, (zoomedW - dims.contW) / 2);
+          const maxPanY = Math.max(0, (zoomedH - dims.contH) / 2);
+          setLightboxPan(p => {
+            const np = {
+              x: Math.max(-maxPanX, Math.min(maxPanX, p.x + dx)),
+              y: Math.max(-maxPanY, Math.min(maxPanY, p.y + dy)),
+            };
+            lightboxPanRef.current = np;
+            return np;
+          });
+        } else {
+          // Fallback: no cached dims (shouldn't happen — captured at
+          // pointer-down) → pan without clamp.
+          setLightboxPan(p => {
+            const np = { x: p.x + dx, y: p.y + dy };
+            lightboxPanRef.current = np;
+            return np;
+          });
+        }
+      } else if (lightboxScrollFrameRef.current) {
+        // Not zoomed + tall image frame exists → scroll the frame
+        // vertically (replaces the native scroll that touch-action: none
+        // disabled). Scrolling UP (dy > 0) should decrease scrollTop.
+        lightboxScrollFrameRef.current.scrollTop -= dy;
+      }
+      // Not zoomed + no scroll frame → do nothing (let tap-to-close handle it)
+
+      lastPanPointRef.current = { x: e.clientX, y: e.clientY };
+    }
+  }, []);
+
+  const onZoomPointerUp = React.useCallback((e: React.PointerEvent) => {
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    zoomPointersRef.current.delete(e.pointerId);
+    if (zoomPointersRef.current.size < 2) {
+      // Pinch ended (one finger lifted or both lifted) → clear the
+      // gesture-start state. If the user puts a second finger back down,
+      // a FRESH pinch starts with new start values (capturing the CURRENT
+      // zoom as the new startZoom). This is the correct behavior: the
+      // user lifted a finger, so the previous gesture is over.
+      pinchStartDistRef.current = null;
+      pinchStartZoomRef.current = null;
+    }
+    if (zoomPointersRef.current.size === 1) {
+      const [p] = Array.from(zoomPointersRef.current.values());
+      lastPanPointRef.current = p;
+    } else if (zoomPointersRef.current.size === 0) {
+      lastPanPointRef.current = null;
+    }
+  }, []);
+
+  // Double-tap to TOGGLE zoom (common UX pattern in photo viewers).
+  // Detected via two rapid pointer-down events on the same target within
+  // 300ms.
+  //
+  // Behavior:
+  //   - NOT zoomed (zoom === 1) + double-tap → zoom IN to 1.8x, centered on
+  //     the tap point (the tapped spot stays under the cursor). 1.8x is a
+  //     satisfying "camera lens" zoom — enough to inspect detail clearly
+  //     without losing orientation. The CSS transition (0.45s easeOutExpo)
+  //     gives a smooth, cinematic zoom-in feel.
+  //   - Zoomed (zoom > 1) + double-tap → zoom OUT to 1x (reset), with the
+  //     same smooth transition.
+  //
+  // Tap-point zoom math:
+  //   The image has `transform-origin: center center`. Scaling by `zoomNew`
+  //   moves a point at offset `d` from the image center to `d * zoomNew`.
+  //   To keep the tap point under the cursor after scaling, we translate
+  //   by `d * (1 - zoomNew)` — i.e. `pan = clickOffset * (1 - zoomNew)`.
+  //   The pan is then clamped to maxPan so the image edge stays within
+  //   the container edge (same clamp logic as the one-finger pan handler).
+  const lastTapRef = React.useRef(0);
+  const onZoomDoubleTap = React.useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      // Double tap detected → toggle zoom with smooth animation
+      lastTapRef.current = 0;
+      // Enable CSS transition so the zoom change animates smoothly.
+      startZoomAnimation();
+
+      if (lightboxZoomRef.current > 1) {
+        // Currently zoomed → zoom OUT to 1x
+        setLightboxZoom(1);
+        setLightboxPan({ x: 0, y: 0 });
+        lightboxZoomRef.current = 1;
+        lightboxPanRef.current = { x: 0, y: 0 };
+      } else {
+        // Currently at 1x → zoom IN to 1.8x centered on the tap point.
+        // 1.8x is a satisfying "camera lens" zoom level — enough to
+        // inspect detail clearly without losing orientation. Combined
+        // with the 0.45s easeOutExpo transition, this feels like a
+        // deliberate lens zoom rather than a snap.
+        const img = e.currentTarget;
+        const container = img?.parentElement ?? null;
+        const zoomNew = 1.8;
+
+        if (img && container) {
+          // `getBoundingClientRect()` returns the image's CURRENT rendered
+          // position (at zoom=1, pan=0, this is the natural rect). The
+          // click offset is calculated relative to the image's center.
+          const rect = img.getBoundingClientRect();
+          const clickOffsetX = e.clientX - (rect.left + rect.width / 2);
+          const clickOffsetY = e.clientY - (rect.top + rect.height / 2);
+          // Pan needed to keep the tap point under the cursor after scaling
+          let panX = clickOffsetX * (1 - zoomNew);
+          let panY = clickOffsetY * (1 - zoomNew);
+          // Clamp pan so the image edge cannot be dragged past the
+          // container edge. Also cache dims (+ natural center) for
+          // subsequent pan/pinch.
+          const imgW = img.offsetWidth;
+          const imgH = img.offsetHeight;
+          const contW = container.offsetWidth;
+          const contH = container.offsetHeight;
+          // At zoom=1, pan=0, the natural center = transformed center.
+          const natCenterX = rect.left + rect.width / 2;
+          const natCenterY = rect.top + rect.height / 2;
+          imgDimsRef.current = { imgW, imgH, contW, contH, natCenterX, natCenterY };
+          const zoomedW = imgW * zoomNew;
+          const zoomedH = imgH * zoomNew;
+          const maxPanX = Math.max(0, (zoomedW - contW) / 2);
+          const maxPanY = Math.max(0, (zoomedH - contH) / 2);
+          panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+          panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+          setLightboxZoom(zoomNew);
+          setLightboxPan({ x: panX, y: panY });
+          lightboxZoomRef.current = zoomNew;
+          lightboxPanRef.current = { x: panX, y: panY };
+        } else {
+          // Fallback: zoom to 1.8x centered (no tap-point compensation)
+          setLightboxZoom(zoomNew);
+          setLightboxPan({ x: 0, y: 0 });
+          lightboxZoomRef.current = zoomNew;
+          lightboxPanRef.current = { x: 0, y: 0 };
+        }
+      }
+    } else {
+      lastTapRef.current = now;
+    }
+  }, []);
 
   // Keyboard nav inside lightbox
   React.useEffect(() => {
@@ -1202,13 +1770,22 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   // same padding, same image sizing.
                   //
                   // `overscroll-contain` prevents scroll chaining to the page
-                  // behind on ALL breakpoints. `max-sm:[touch-action:pan-y]`
-                  // enables native vertical drag on touch devices only.
+                  // behind on ALL breakpoints.
                   //
-                  // ── Mobile padding override ──
-                  // `max-sm:pt-5 max-sm:pb-3` reduces vertical padding on
-                  // mobile only: top 24→20px, bottom 24→12px (per user spec).
-                  // Desktop/tablet (sm+) keeps the original 24px/24px.
+                  // ── touch-action: pan-y ──
+                  // On mobile we use `pan-y` on the OVERLAY (NOT the images).
+                  // This allows vertical scrolling of the overlay itself (for
+                  // tall images when zoom=1) but blocks native pinch-zoom —
+                  // which is intentional, because we handle pinch-zoom in JS
+                  // via Pointer Events on the <img> elements (the images have
+                  // their own `touch-action: none`). If we used `manipulation`
+                  // here, the browser's native pinch-zoom would interfere with
+                  // our JS pinch detection (both would try to handle the same
+                  // 2-finger gesture).
+                  //
+                  // The overlay's `pan-y` only applies to touches on the
+                  // overlay background (outside the image). Touches on the
+                  // image use the image's `touch-action: none`.
                   "fixed inset-0 z-[200] flex flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-y-auto overscroll-contain scrollbar-none bg-black/50 backdrop-blur-md",
                   "max-sm:[touch-action:pan-y]"
                 )}
@@ -1376,6 +1953,64 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       <X className="h-5 w-5" />
                     </button>
 
+                    {/* "Double-tap to reset" hint — pill at BOTTOM-center.
+                        Shows 8s after the user zooms in (zoom > 1) and
+                        auto-hides 3s later, so it acts as a gentle late
+                        reminder rather than an immediate popup. Driven by
+                        `zoomResetHintVisible`.
+
+                        Positioned at BOTTOM-center (matches the scroll
+                        hint's position pattern, on the opposite side from
+                        the X button which is at the top). The scroll hint
+                        and this hint never coexist — the scroll hint only
+                        shows at zoom=1 for tall DevSol images, while this
+                        hint only shows at zoom > 1. pointer-events-none so
+                        it never blocks tap/pan on the image. z-30 so it
+                        sits above the image.
+
+                        STRUCTURE: outer wrapper div handles ABSOLUTE
+                        POSITIONING only (bottom-3, left-0 right-0, flex
+                        justify-center) — it has NO transform. The inner
+                        motion.div handles ALL animation (opacity + y +
+                        scale). Same split as the scroll hint: this avoids
+                        framer-motion's transform pipeline overriding any
+                        CSS translateX used for centering. The wrapper's
+                        `flex justify-center` does the horizontal centering
+                        so the motion.div never needs a transform for
+                        positioning. The `px-16` side padding prevents the
+                        pill from overlapping the X button on narrow
+                        viewports. */}
+                    <div className="pointer-events-none absolute bottom-3 left-0 right-0 z-30 flex justify-center px-16">
+                      <AnimatePresence>
+                        {zoomResetHintVisible && lightboxZoom > 1 && (
+                          <motion.div
+                            initial={
+                              prefersReducedMotion
+                                ? { opacity: 0 }
+                                : { opacity: 0, y: 8, scale: 0.96 }
+                            }
+                            animate={
+                              prefersReducedMotion
+                                ? { opacity: 1 }
+                                : { opacity: 1, y: 0, scale: 1 }
+                            }
+                            exit={
+                              prefersReducedMotion
+                                ? { opacity: 0 }
+                                : { opacity: 0, y: 8, scale: 0.96 }
+                            }
+                            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                            className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/70 px-3 py-1.5 backdrop-blur-sm"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 text-white" />
+                            <span className="text-xs font-medium text-white whitespace-nowrap">
+                              {t("portfolio.modal.resetHint")}
+                            </span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
                     {isDevSolutionsTall ? (
                       /* ── Tall Dev Solutions lightbox image (16:9 autofill frame) ──
                          This branch handles ONLY the two TALL Dev Solutions
@@ -1494,11 +2129,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           }}
                           className={cn(
                             "absolute inset-0 overflow-y-auto overscroll-contain scrollbar-none",
-                            // Allow vertical panning on touch
-                            // devices without triggering the
-                            // overlay's tap-to-close. pan-y lets
-                            // the browser handle vertical drag
-                            // natively.
+                            // `touch-action: pan-y` on the scroll frame allows
+                            // vertical scrolling (for the tall image when
+                            // zoom=1) but blocks native pinch-zoom — the
+                            // <img> inside has its own `touch-action: none`
+                            // for JS-based pinch-zoom + pan. Touches on the
+                            // image use the image's touch-action, not the
+                            // frame's.
                             "[touch-action:pan-y]"
                           )}
                         >
@@ -1528,6 +2165,32 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                               lightboxImgLoaded ? "opacity-100" : "opacity-0"
                             )}
                             draggable={false}
+                            // ── Pinch-zoom + pan (mobile) ──
+                            // touch-action: none tells the browser NOT to
+                            // handle any touch gesture natively, so JS
+                            // receives all pointer events for pinch/pan.
+                            // The transform applies zoom + pan; when zoom=1
+                            // and pan={0,0}, the transform is a no-op.
+                            style={{
+                              touchAction: "none",
+                              transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`,
+                              transformOrigin: "center center",
+                              // Smooth transition for double-tap zoom. Only
+                              // active while `zoomAnimating` is true (set by
+                              // `onZoomDoubleTap`, auto-reset after 500ms).
+                              // During manual pinch/pan, no transition so
+                              // the transform tracks the fingers 1:1.
+                              // 0.45s + easeOutExpo gives a deliberate,
+                              // camera-lens-like zoom feel.
+                              transition: zoomAnimating
+                                ? "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)"
+                                : "none",
+                            }}
+                            onPointerDown={onZoomPointerDown}
+                            onPointerMove={onZoomPointerMove}
+                            onPointerUp={onZoomPointerUp}
+                            onPointerCancel={onZoomPointerUp}
+                            onClick={onZoomDoubleTap}
                             onLoad={() => {
                               setLightboxImgLoaded(true);
                               setLightboxReady(true);
@@ -1672,6 +2335,24 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             lightboxImgLoaded ? "opacity-100 relative z-10" : "absolute inset-0 opacity-0"
                           )}
                           draggable={false}
+                          // ── Pinch-zoom + pan (mobile) ──
+                          // Smooth transition for double-tap zoom — same
+                          // logic as the tall-image variant above. Only
+                          // active while `zoomAnimating` is true so manual
+                          // pinch/pan still tracks fingers 1:1.
+                          style={{
+                            touchAction: "none",
+                            transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`,
+                            transformOrigin: "center center",
+                            transition: zoomAnimating
+                              ? "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)"
+                              : "none",
+                          }}
+                          onPointerDown={onZoomPointerDown}
+                          onPointerMove={onZoomPointerMove}
+                          onPointerUp={onZoomPointerUp}
+                          onPointerCancel={onZoomPointerUp}
+                          onClick={onZoomDoubleTap}
                           onLoad={() => {
                             setLightboxImgLoaded(true);
                             setLightboxReady(true);
@@ -1710,6 +2391,24 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           lightboxImgLoaded ? "opacity-100" : "absolute inset-0 opacity-0"
                         )}
                         draggable={false}
+                        // ── Pinch-zoom + pan (mobile) ──
+                        // Smooth transition for double-tap zoom — same
+                        // logic as the tall-image variant above. Only
+                        // active while `zoomAnimating` is true so manual
+                        // pinch/pan still tracks fingers 1:1.
+                        style={{
+                          touchAction: "none",
+                          transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`,
+                          transformOrigin: "center center",
+                          transition: zoomAnimating
+                            ? "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)"
+                            : "none",
+                        }}
+                        onPointerDown={onZoomPointerDown}
+                        onPointerMove={onZoomPointerMove}
+                        onPointerUp={onZoomPointerUp}
+                        onPointerCancel={onZoomPointerUp}
+                        onClick={onZoomDoubleTap}
                         onLoad={() => {
                           setLightboxImgLoaded(true);
                           setLightboxReady(true);
