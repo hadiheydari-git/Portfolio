@@ -327,22 +327,69 @@
   /* Shared horizontal container — guarantees identical layout edges across
      ALL sections (Hero, Portfolio, Experience, Skills, Contact, Footer) AND
      the floating header capsule. The header and content share the SAME margins
-     to the viewport edges at every breakpoint. Max-width is generous so the
-     content (and header) sit closer to the screen edges while staying aligned. */
+     to the viewport edges at every breakpoint.
+
+     Spec: at each viewport width, the horizontal margin (viewport edge to
+     content) is exactly the value below. padding-inline is used (symmetric
+     left + right) so margins apply to BOTH sides at once.
+
+     At ≥2560px, a max-width cap (104rem = 1664px) kicks in to maintain a
+     premium desktop layout — content stops growing and auto-margin centers
+     the capped container. The cap = content width at 2560px
+     (2560 − 2×448 = 1664px). */
   .container-edge {
     margin-inline: auto;
     width: 100%;
-    max-width: 80rem; /* 1280px — wide, content close to viewport edges */
-    padding-inline: 1.25rem; /* 20px base */
+    /* Base (smallest breakpoint, ≥320px) → 16px each side */
+    padding-inline: 16px;
+  }
+  /* Mobile-first cascade: each subsequent breakpoint overrides padding-inline.
+     All values are symmetric (left + right) per the spec. */
+  @media (min-width: 375px) {
+    .container-edge { padding-inline: 20px; }
+  }
+  @media (min-width: 390px) {
+    .container-edge { padding-inline: 20px; }
+  }
+  @media (min-width: 414px) {
+    .container-edge { padding-inline: 24px; }
+  }
+  @media (min-width: 480px) {
+    .container-edge { padding-inline: 24px; }
   }
   @media (min-width: 640px) {
-    .container-edge { padding-inline: 1.5rem; } /* 24px */
+    .container-edge { padding-inline: 32px; }
+  }
+  @media (min-width: 768px) {
+    .container-edge { padding-inline: 40px; }
+  }
+  @media (min-width: 834px) {
+    .container-edge { padding-inline: 48px; }
   }
   @media (min-width: 1024px) {
-    .container-edge { padding-inline: 2rem; } /* 32px */
+    .container-edge { padding-inline: 64px; }
   }
   @media (min-width: 1280px) {
-    .container-edge { padding-inline: 2.5rem; } /* 40px */
+    .container-edge { padding-inline: 112px; }
+  }
+  @media (min-width: 1440px) {
+    .container-edge { padding-inline: 160px; }
+  }
+  @media (min-width: 1600px) {
+    .container-edge { padding-inline: 224px; }
+  }
+  @media (min-width: 1920px) {
+    .container-edge { padding-inline: 288px; }
+  }
+  @media (min-width: 2560px) {
+    /* Premium cap: content stops growing at 1664px (104rem) on huge screens.
+       padding-inline resets to 0; auto-margin centers the capped container.
+       At exactly 2560px: container = 1664px, auto-margin = 448px each side,
+       which matches the spec's 448px margin. */
+    .container-edge {
+      padding-inline: 0;
+      max-width: 104rem; /* 1664px — content width at 2560px */
+    }
   }
 
   /* Premium gradient text */

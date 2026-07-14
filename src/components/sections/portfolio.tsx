@@ -54,7 +54,7 @@ export function Portfolio() {
 
       {/* Card grid — separate RevealOnScroll so stagger fires when cards enter view */}
       <RevealOnScroll staggerDelay={0.08} className="container-edge mt-12">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-6 sm:gap-5 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-6 lg:gap-5">
           {ORDERED_PROJECTS.map((project, i) => (
             <BentoCard
               key={project.id}

@@ -51,13 +51,13 @@ export function Hero() {
         />
       </div>
 
-      <RevealOnScroll staggerDelay={0.08} className="container-edge grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+      <RevealOnScroll staggerDelay={0.08} className="container-edge grid items-center gap-12 sm:grid-cols-[1.1fr_0.9fr]">
         {/* Visual column — profile image (mobile: first, desktop: right) */}
         <RevealItem className={cn(
-            "relative order-1 w-full mx-auto aspect-square rounded-[2rem] lg:order-2 lg:max-w-sm lg:rounded-[2.5rem]",
-            locale === "en" ? "lg:ml-auto lg:mr-0" : "lg:mr-auto lg:ml-0"
+            "relative order-1 w-full mx-auto aspect-square rounded-[2rem] sm:order-2 sm:max-w-sm sm:rounded-[2.5rem]",
+            locale === "en" ? "sm:ml-auto sm:mr-0" : "sm:mr-auto sm:ml-0"
           )}>
-          <div className="h-full w-full overflow-hidden rounded-[2rem] border border-black/10 shadow-lifted lg:rounded-[2.5rem]">
+          <div className="h-full w-full overflow-hidden rounded-[2rem] border border-black/10 shadow-lifted sm:rounded-[2.5rem]">
             <SmartImage
               src="/hadi-heydari-headshot.webp"
               alt={tt(profile.name)}
@@ -68,7 +68,7 @@ export function Hero() {
           </div>
 
           {/* Floating badges — slightly outside image on all screen sizes */}
-          <div className={cn("absolute -top-4 flex items-center gap-1.5 rounded-2xl border border-black/10 bg-card/90 backdrop-blur-sm px-3 py-2 text-xs font-medium shadow-card dark:border-white/10 lg:bg-card lg:backdrop-blur-none animate-float", locale === "en" ? "-left-4" : "-right-4")}>
+          <div className={cn("absolute -top-4 flex items-center gap-1.5 rounded-2xl border border-black/10 bg-card/90 backdrop-blur-sm px-3 py-2 text-xs font-medium shadow-card dark:border-white/10 sm:bg-card sm:backdrop-blur-none animate-float", locale === "en" ? "-left-4" : "-right-4")}>
             <span className="text-foreground">✦</span>
             {t("hero.badgeDesignSystems")}
           </div>
@@ -79,13 +79,13 @@ export function Hero() {
         </RevealItem>
 
         {/* Text column */}
-        <div className="flex flex-col items-start gap-6 order-2 lg:order-1">
+        <div className="flex flex-col items-start gap-6 order-2 sm:order-1">
           <RevealItem className="flex flex-col gap-3">
-            <h1 className="text-balance text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+            <h1 className="text-balance text-4xl font-extrabold tracking-tight md:text-5xl lg:text-6xl xl:text-7xl">
               <span className="text-foreground dark:text-white">{tt(profile.name)}</span>
             </h1>
 
-            <p className="text-base font-medium tracking-tight text-muted-foreground sm:text-2xl">
+            <p className="text-base font-medium tracking-tight text-muted-foreground md:text-lg lg:text-2xl">
               {t("hero.title")}
             </p>
           </RevealItem>
@@ -129,7 +129,7 @@ export function Hero() {
 
               return (
                 <div key={i} className="flex flex-col items-center">
-                  <span className="text-2xl font-semibold tracking-tight sm:text-3xl tabular-nums">
+                  <span className="text-2xl font-semibold tracking-tight lg:text-3xl tabular-nums">
                     {Number.isFinite(target) ? (
                       <CountUp to={target}>
                         {(v) =>

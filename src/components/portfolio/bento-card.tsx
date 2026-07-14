@@ -40,11 +40,7 @@ const BentoCard = React.memo(function BentoCard({
     onOpen(project);
   }, [onOpen, project]);
 
-  const smClass =
-    smCols === 6 ? "sm:col-span-6" :
-    smCols === 4 ? "sm:col-span-4" :
-    smCols === 3 ? "sm:col-span-3" :
-    smCols === 2 ? "sm:col-span-2" : "sm:col-span-1";
+  const smClass = "";
 
   const lgClass =
     lgCols === 6 ? "lg:col-span-6" :
@@ -62,15 +58,16 @@ const BentoCard = React.memo(function BentoCard({
   // ~1.9× and the cover looked blurry despite 4K–8K source files.
   //
   // Layout facts:
-  //   - Mobile (<640px): single column → card spans 100vw.
-  //   - Tablet (640–1023px): 6-col grid, card spans `smCols` of 6 → (smCols/6)×100vw.
-  //   - Desktop (≥1024px): 6-col grid inside an 80rem (1280px) container with
-  //     2.5rem padding each side → content ≈ 75rem. Card spans `lgCols` of 6 →
-  //     (lgCols/6)×75rem. We round up slightly to avoid under-serving.
+  //   - Mobile (<1024px): single column → card spans 100vw.
+  //   - Desktop (≥1024px): 6-col grid with content width varying from 56rem
+  //     (at 1024px viewport) to 104rem (at ≥2560px, capped). We use 84rem
+  //     (content width at 1920px) as the reference — a reasonable upper
+  //     bound that avoids both under-serving on large desktops and
+  //     excessive over-fetching on smaller ones. Card spans `lgCols` of 6
+  //     → (lgCols/6)×84rem.
   const sizes = [
-    "(max-width: 640px) 100vw",
-    `(max-width: 1024px) ${(smCols / 6) * 100}vw`,
-    `${Math.ceil((lgCols / 6) * 75)}rem`,
+    "(max-width: 1024px) 100vw",
+    `${Math.ceil((lgCols / 6) * 84)}rem`,
   ].join(", ");
 
   return (
@@ -170,17 +167,23 @@ const BentoCard = React.memo(function BentoCard({
         </div>
       </button>
 
-      {/* Anti-aliasing edge cover — masks the ~1px light artifact at rounded
-          corners and straight edges caused by overflow:hidden + border-radius.
-          Implementation: a hollow box (transparent center, opaque edges) using
-          a background-color matching the page bg.
-          IMPORTANT: We use background-color (NOT outline, NOT border) because
-          global CSS sets `* { outline-color: var(--ring) }` which some browsers
-          render visibly. background-color is never overridden by accessibility
-          styles and always renders the exact color we specify. */}
+      {/* Anti-aliasing edge cover + thin border — masks the ~1px light artifact
+          at rounded corners (4px background-colored ring via ::before) AND draws
+          a thin border (via ::after) flush with the inner edge of that ring,
+          i.e. flush with the visible image edge.
+
+          ::before = mask ring: inset 0 0 0 4px var(--background) at rounded-[33px]
+          ::after  = border:     inset 0 0 0 1px (black/10 or white/10) at
+                     inset-[4px] / rounded-[29px] (= 33 - 4, matching the ring's
+                     inner curve so the border follows the same corner shape).
+
+          IMPORTANT: background-color (NOT outline/border) is used for the mask
+          ring because global CSS sets `* { outline-color: var(--ring) }`. The
+          border is an inset box-shadow on ::after so it doesn't trigger the
+          outline-color override either. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-px -right-[2px] -bottom-px -left-px z-10 rounded-[33px] border-0 outline-none [box-shadow:none] [background:transparent] before:absolute before:inset-0 before:rounded-[33px] before:shadow-[inset_0_0_0_4px_var(--background)] before:content-['']"
+        className="pointer-events-none absolute -top-px -right-[2px] -bottom-px -left-px z-10 rounded-[33px] border-0 outline-none [box-shadow:none] [background:transparent] before:absolute before:inset-0 before:rounded-[33px] before:shadow-[inset_0_0_0_4px_var(--background)] before:content-[''] after:absolute after:inset-[4px] after:rounded-[29px] after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] after:content-['']"
       />
     </RevealItem>
   );
