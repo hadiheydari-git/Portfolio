@@ -1498,7 +1498,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       </Section>
                     </motion.div>
 
-                    {/* Tools (categorized) */}
+                    {/* Tools (categorized) — only show when project has tools */}
+                    {project.tools.length > 0 && (
                     <motion.div variants={itemVariants}>
                       <Section title={t("portfolio.modal.tools")}>
                         <div className="flex flex-wrap gap-2">
@@ -1515,6 +1516,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         </div>
                       </Section>
                     </motion.div>
+                    )}
 
                     {/* Gallery */}
                     <motion.div variants={itemVariants}>
