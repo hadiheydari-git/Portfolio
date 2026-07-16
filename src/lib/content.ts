@@ -62,7 +62,7 @@ export const projects: Project[] = [
   // 1 — DUTAR DASHBOARD (Large)
   {
     id: "dutar-dashboard",
-    title: { fa: "داشبورد دوتر", en: "Dutar Dashboard" },
+    title: { fa: "داشبورد دوتر", en: "Dotaar Dashboard" },
     role: { fa: "طراح محصول", en: "Product Designer" },
     year: { fa: "۱۴۰۱ – ۱۴۰۴", en: "2022 – 2025" },
     size: "large",
@@ -73,8 +73,8 @@ export const projects: Project[] = [
       en: "A dedicated management panel for restaurants & cafes",
     },
     overview: {
-      fa: "پنل مدیریت اختصاصی برای رستوران‌ها و کافه‌ها که فرایند سفارش‌گیری و اداره روزانه کسب‌وکار را در یک سیستم یکپارچه سازماندهی می‌کند.",
-      en: "A dedicated management panel for restaurants and cafes that organizes the ordering process and daily business operations in a single, unified system.",
+      fa: "سامانه‌ای برای سفارش‌گیری و فروش فروشگاه‌ها به‌ویژه رستوران‌ها و کافه‌ها که امکان ثبت سفارش حضوری و بیرون‌بر و همچنین مدیریت محصولات و تخفیف‌ها و رزرو میز و گزارش فروش و دیگر امکانات موردنیاز کسب‌وکار را پوشش می‌دهد. در این پروژه تمام مراحل طراحی محصول را به‌تنهایی انجام دادم و هدفم ساده‌سازی فرآیند سفارش‌گیری و افزایش درآمد کسب‌وکارها بود.",
+      en: "A platform for ordering and sales management for businesses, especially restaurants and cafes, that covers dine-in and takeout orders, product and discount management, table reservations, sales reports, and other business essentials. I handled the entire product design process solo, aiming to simplify ordering and boost business revenue.",
     },
     roleDescription: {
       fa: "هم‌بنیان‌گذار و تنها طراح محصول پروژه؛ از تحقیق کاربر و تحلیل رقبا تا یوزرفلو، وایرفریم و سیستم طراحی، تمام مسیر طراحی را به‌تنهایی و بدون همکار طراح پیش بردم.",
@@ -162,7 +162,7 @@ export const projects: Project[] = [
   // 2 — DUTAR SHOP (Large)
   {
     id: "dutar-shop",
-    title: { fa: "فروشگاه دوتر", en: "Dutar Shop" },
+    title: { fa: "فروشگاه دوتر", en: "Dotaar Shop" },
     role: { fa: "طراح محصول", en: "Product Designer" },
     year: { fa: "۱۴۰۱ – ۱۴۰۴", en: "2022 – 2025" },
     size: "large",
@@ -173,8 +173,8 @@ export const projects: Project[] = [
       en: "The online ordering experience for customers",
     },
     overview: {
-      fa: "تجربه سفارش‌گیری آنلاین برای مشتریان رستوران‌ها و کافه‌ها، طراحی‌شده برای سادگی و سرعت در ثبت سفارش.",
-      en: "An online ordering experience for restaurant and cafe customers, designed for simplicity and speed in placing orders.",
+      fa: "فضایی برای سفارش آنلاین فروشگاه‌ها که مشتریان می‌توانند در آن محصولات را ببینند و سفارش خود را ثبت کنند و روش دریافت را انتخاب کنند و وضعیت سفارش را پیگیری کنند. در این پروژه تمام مراحل طراحی محصول را به‌تنهایی انجام دادم و هدفم ایجاد فرآیندی ساده برای ثبت سفارش مشتریان بود.",
+      en: "An online ordering space for businesses where customers can browse products, place orders, choose a delivery method, and track their order status. I handled the entire product design process solo, aiming to create a simple ordering flow for customers.",
     },
     roleDescription: {
       fa: "طراحی کامل تجربه کاربری سمت مشتری به‌تنهایی، با هماهنگی دقیق با داشبورد مدیریتی که آن را هم خودم طراحی کرده بودم.",
@@ -269,8 +269,8 @@ export const projects: Project[] = [
       en: "The social Mafia game with a cinematic experience",
     },
     overview: {
-      fa: "بازی اجتماعی مافیا با تجربه‌ای سینمایی، ساخته‌شده به‌صورت کامل با رویکرد Vibe Coding.",
-      en: "A social Mafia game with a cinematic experience, built entirely with a Vibe Coding approach.",
+      fa: "مافیا مستر دستیار هوشمندی برای راویان بازی مافیاست که با مدیریت بازیکنان و تخصیص نقش‌ها و کنترل مراحل بازی و هدایت سناریوها اجرای بازی را به‌ویژه برای راویان مبتدی ساده‌تر و دقیق‌تر و منظم‌تر می‌کند. این پروژه فرصتی بود تا در قالب یک محصول کاملاً متفاوت توانایی خودم را در جنبه‌های مختلف طراحی محصول بسنجم و تجربه‌ای جدی از برنامه‌نویسی مبتنی بر هوش مصنوعی یا همان وایب کدینگ به دست بیاورم. توسعه پروژه کاملاً انفرادی انجام شد و تمام ایده‌پردازی‌ها و تعریف قابلیت‌ها و طراحی مسیرهای کاربری و منطق و ساختار محصول بر عهده من بود و هوش مصنوعی صرفاً در طراحی رابط کاربری و پیاده‌سازی فنی نقش داشت.",
+      en: "Mafia Master is a smart assistant for Mafia game narrators that manages players, assigns roles, controls game phases, and guides scenarios, making the game — especially for beginner narrators — simpler, more precise, and more organized. This project was an opportunity to test my abilities across different aspects of product design through a completely different kind of product and gain serious experience in AI-based programming, aka vibe coding. Development was entirely solo; all ideation, feature definition, user flow design, and product logic and structure were my responsibility, while AI played a role only in UI design and technical implementation.",
     },
     roleDescription: {
       fa: "اینجا برخلاف پروژه‌های قبلی، حتی یک خط طراحی هم نکردم؛ کل پروژه از ایده تا اجرا، دیباگ و بیلد نهایی، تنها توسط من و با ترکیب ابزارهای هوش مصنوعی (Firebase Studio، GitHub Copilot، Cursor و ChatGPT) پیش رفت — بدون هیچ همکار انسانی، چه طراح و چه توسعه‌دهنده.",
@@ -374,8 +374,8 @@ export const projects: Project[] = [
       en: "Agency website & management panel",
     },
     overview: {
-      fa: "وب‌سایت و پنل مدیریت آژانس طراحی، برای ارائه خدمات طراحی سایت و مدیریت شبکه‌های اجتماعی به مشتریان.",
-      en: "An agency website and management panel for offering web design and social media management services to clients.",
+      fa: "آژانسی برای ارائه خدمات طراحی سایت و مدیریت شبکه‌های اجتماعی که در آن علاوه بر هم‌بنیان‌گذاری آژانس مسئول طراحی تجربه و رابط کاربری وب‌سایت و داشبورد هم بودم. تمام ساختار اطلاعات و مسیرهای کاربری و طراحی رابط کاربری توسط من انجام شد.",
+      en: "An agency offering web design and social media management services. Beyond co-founding the agency, I was responsible for designing the UX and UI of both the website and the dashboard. All information architecture, user flows, and UI design were done by me.",
     },
     roleDescription: {
       fa: "هم‌بنیان‌گذار و تنها طراح تجربه و رابط کاربری آژانس؛ طراحی لندینگ‌پیج اصلی و داشبورد مدیریتی، بدون هیچ همکار طراح دیگری، تماماً بر عهده من بود.",
@@ -473,13 +473,13 @@ export const experiences: Experience[] = [
   {
     id: "dutar",
     role: { fa: "طراح محصول", en: "Product Designer" },
-    company: { fa: "دوتر", en: "Dutar" },
+    company: { fa: "دوتر", en: "Dotaar" },
     period: { fa: "شهریور ۱۴۰۱ – خرداد ۱۴۰۴", en: "Sep 2022 – Jun 2025" },
     start: "2022-09",
     current: false,
     summary: {
       fa: "به‌عنوان هم‌بنیان‌گذار و طراح محصول دوتر، از مرحله ایده‌پردازی تا طراحی تجربه و رابط کاربری و تعریف جزئیات عملکرد را شخصاً بر عهده داشتم و در تعامل با همکار فنی، پیاده‌سازی محصول را پیش بردیم. دوتر پلتفرم آنلاین اشتراکی برای سفارش‌گیری و مدیریت داخلی رستوران‌ و کافه‌ها است؛ که خدمات اختصاصی برای هر فروشگاه ارائه می‌دهد و نیازهای اساسی آنها را پوشش می‌دهد. انگیزه پروژه از تجربه‌ی کار در رستوران نشأت گرفت، جایی که شناخت عمیقی از فرایند سفارش‌گیری، ارسال و مدیریت پیدا کردم.",
-      en: "As co-founder and product designer of Dutar, I personally owned everything from ideation to UX/UI design and defining functional details, driving implementation with the technical co-founder. Dutar is an online subscription platform for ordering and internal management of restaurants and cafes, offering dedicated services for each venue and covering their essential needs. The project's motivation grew from hands-on experience working in a restaurant, where I gained deep insight into the ordering, delivery, and management process.",
+      en: "As co-founder and product designer of Dotaar, I personally owned everything from ideation to UX/UI design and defining functional details, driving implementation with the technical co-founder. Dotaar is an online subscription platform for ordering and internal management of restaurants and cafes, offering dedicated services for each venue and covering their essential needs. The project's motivation grew from hands-on experience working in a restaurant, where I gained deep insight into the ordering, delivery, and management process.",
     },
     responsibilities: [
       {
@@ -513,7 +513,7 @@ export const experiences: Experience[] = [
     current: false,
     summary: {
       fa: "به‌عنوان هم‌بنیان‌گذار و طراح تجربه و رابط کاربری در آژانس «دِو سولوشن» (Dev Solutions)، نقش کلیدی در تأسیس و هدایت این مجموعه خدمات طراحی سایت و مدیریت شبکه‌های اجتماعی ایفا کردم. این پروژه که پیش از راه‌اندازی نهایی سامانه «دوتر» آغاز شد، سکوی پرتابی برای ورود به چالش‌های پیشرفته‌تر طراحی محصول بود. کار در دِو سولوشن به من دیدی عملی درباره‌ی ساخت نمونه‌های اولیه، سنجش نیاز بازار، و طراحی محصول قابل عرضه داد.",
-      en: "As co-founder and UX/UI designer at the “Dev Solutions” agency, I played a key role in founding and leading this web-design and social-media-management service. Starting before Dutar's final launch, it was a launchpad into more advanced product-design challenges. Working at Dev Solutions gave me a practical view of building prototypes, measuring market needs, and designing marketable products.",
+      en: "As co-founder and UX/UI designer at the “Dev Solutions” agency, I played a key role in founding and leading this web-design and social-media-management service. Starting before Dotaar's final launch, it was a launchpad into more advanced product-design challenges. Working at Dev Solutions gave me a practical view of building prototypes, measuring market needs, and designing marketable products.",
     },
     responsibilities: [
       {
@@ -653,5 +653,5 @@ export const profile = {
 // Stats for hero
 export const heroStats = [
   { value: "۴", valueEn: "4", label: { fa: "سال تجربه", en: "yrs experience" } },
-  { value: "۵+", valueEn: "5+", label: { fa: "پروژه", en: "projects" } },
+  { value: "۳", valueEn: "3", label: { fa: "محصول", en: "products" } },
 ];

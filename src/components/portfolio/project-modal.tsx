@@ -1477,20 +1477,14 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     <motion.div variants={itemVariants}>
                       <DialogPrimitive.Title asChild>
                         <div className="flex flex-col gap-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-xs font-medium">
-                              {tt(project.role)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {tt(project.year)}
-                            </span>
-                          </div>
                           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                             {tt(project.title)}
                           </h2>
-                          <p className="text-sm text-muted-foreground">
-                            {tt(project.tagline)}
-                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{tt(project.role)}</span>
+                            <span className="inline-block h-3.5 w-0.5 shrink-0 bg-muted-foreground/40" />
+                            <span>{tt(project.year)}</span>
+                          </div>
                         </div>
                       </DialogPrimitive.Title>
                     </motion.div>
@@ -1504,57 +1498,20 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       </Section>
                     </motion.div>
 
-                    {/* My role */}
-                    <motion.div variants={itemVariants}>
-                      <Section title={t("portfolio.modal.myRole")}>
-                        <p className="text-sm leading-relaxed text-foreground/80 sm:text-[15px]">
-                          {tt(project.roleDescription)}
-                        </p>
-                        <ul className="mt-4 flex flex-col gap-2.5">
-                          {project.responsibilities.map((r, i) => {
-                            const Icon = getResponsibilityIcon(r.fa, r.en);
-                            return (
-                              <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/75">
-                                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground/60">
-                                  <Icon className="h-3 w-3" />
-                                </span>
-                                <span className="leading-relaxed">{tt(r)}</span>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </Section>
-                    </motion.div>
-
                     {/* Tools (categorized) */}
                     <motion.div variants={itemVariants}>
                       <Section title={t("portfolio.modal.tools")}>
-                        <div className="flex flex-col gap-4">
-                          {CATEGORY_ORDER.map((cat) => {
-                            const items = project.tools.filter(
-                              (tool) => tool.category === cat
-                            );
-                            if (items.length === 0) return null;
-                            return (
-                              <div key={cat} className="flex flex-col gap-2">
-                                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
-                                  {t(`portfolio.modal.category.${cat}`)}
-                                </span>
-                                <div className="flex flex-wrap gap-2">
-                                  {items.map((tool) => (
-                                    <span
-                                      key={tool.name}
-                                      dir="ltr"
-                                      className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-secondary/40 px-3 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-secondary dark:border-white/10"
-                                    >
-                                      <ToolIcon name={tool.name} className="h-4 w-4 shrink-0" />
-                                      {tool.name}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className="flex flex-wrap gap-2">
+                          {project.tools.map((tool) => (
+                            <span
+                              key={tool.name}
+                              dir="ltr"
+                              className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-secondary/40 px-3 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-secondary dark:border-white/10"
+                            >
+                              <ToolIcon name={tool.name} className="h-4 w-4 shrink-0" />
+                              {tool.name}
+                            </span>
+                          ))}
                         </div>
                       </Section>
                     </motion.div>
