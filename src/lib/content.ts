@@ -98,9 +98,10 @@ export const projects: Project[] = [
         en: "Setting working hours, discounts, and product categorization",
       },
     ],
-    tools: [
-      { name: "Figma & FigJam", category: "design" },
-    ],
+    // tools: [
+    //   { name: "Figma & FigJam", category: "design" },
+    // ],
+    tools: [],
     gallery: [
       {
         src: "/images/Dotaar Dashboard/1-Login & Register.webp",
@@ -194,9 +195,10 @@ export const projects: Project[] = [
         en: "A simple ordering flow that requires no training for the end customer",
       },
     ],
-    tools: [
-      { name: "Figma & FigJam", category: "design" },
-    ],
+    // tools: [
+    //   { name: "Figma & FigJam", category: "design" },
+    // ],
+    tools: [],
     gallery: [
       {
         src: "/images/Dotaar Store/1-Products.webp",
@@ -259,7 +261,7 @@ export const projects: Project[] = [
   {
     id: "mafia-master",
     title: { fa: "مافیا مستر", en: "Mafia Master" },
-    role: { fa: "Vibe Coding", en: "Vibe Coding" },
+    role: { fa: "وایب کدینگ", en: "Vibe Coding" },
     year: { fa: "۱۴۰۴", en: "2025" },
     size: "large",
     cover: "/images/Mafia Master/Thumbnail.webp",
@@ -395,9 +397,10 @@ export const projects: Project[] = [
         en: "A visual structure aligned with the agency's brand identity",
       },
     ],
-    tools: [
-      { name: "Figma & FigJam", category: "design" },
-    ],
+    // tools: [
+    //   { name: "Figma & FigJam", category: "design" },
+    // ],
+    tools: [],
     gallery: [
       {
         // Natural dims: 5760×13820 → ratio 0.417 (very tall portrait).

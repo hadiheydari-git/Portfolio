@@ -107,20 +107,7 @@ const BentoCard = React.memo(function BentoCard({
           )}
         />
 
-        {/* Mafia Master role badge — same styling as the role badge inside
-            the project modal (theme-token based, no animation). */}
-        {project.id === "mafia-master" && (
-          <div
-            className={cn(
-              "relative z-10 flex items-start p-5",
-              locale === "fa" ? "justify-end" : "justify-end"
-            )}
-          >
-            <span className="rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-xs font-medium">
-              {tt(project.role)}
-            </span>
-          </div>
-        )}
+        {/* Mafia Master role badge — removed from bento card */}
 
         {/* Bottom content row — title/tagline on the right, "مشاهده" button
             on the left, both sharing the SAME bottom padding so their baselines
