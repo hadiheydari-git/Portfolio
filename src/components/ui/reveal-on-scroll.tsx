@@ -27,8 +27,18 @@ const ITEM_VARIANTS_REDUCED: Variants = {
 
 const DEFAULT_VIEWPORT = {
   once: true,
-  amount: 0.25,
-  margin: "0px 0px -6% 0px",
+  // amount=0.15 → trigger when 15% of the element is visible.
+  // Compromise between the old 0.25 (too much scroll required) and the
+  // brief 0.1 (felt too eager — animations fired before the user could
+  // actually see the element). 0.15 fires shortly after the element's
+  // top edge enters the viewport, but late enough that the element is
+  // clearly in view when the animation starts.
+  amount: 0.15,
+  // Slightly negative bottom margin (-2%) shrinks the trigger viewport by
+  // a small amount, so the animation fires just a touch later than a
+  // pure-amount trigger would. Previously -6% felt too late; +10% felt
+  // too early. -2% is the sweet spot between them.
+  margin: "0px 0px -2% 0px",
 } as const;
 
 // ── RevealOnScroll ──────────────────────────────────────────────────

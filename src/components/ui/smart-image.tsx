@@ -56,8 +56,19 @@ type Props = {
  * forces the browser to bilinearly downscale 11× (8640px → 768px display),
  * producing a subtle blur. next/image generates proper srcset variants so
  * the browser receives an appropriately-sized image. See project-modal.tsx.
+ *
+ * MEMOIZATION — wrapped in React.memo so the parent can re-render (e.g.
+ * during lightbox pinch-zoom, when the project modal's `lightboxZoom` /
+ * `lightboxPan` state updates hundreds of times per second) WITHOUT
+ * causing this thumbnail to re-render. The component's only inputs are
+ * `src`, `alt`, className strings, and `onLoad` (stabilized by the parent
+ * via `useCallback`), so React.memo's shallow prop comparison will hit the
+ * cache and skip the re-render. This is critical for the gallery's
+ * progressive batch loading — without memoization, every parent state
+ * change would re-render every gallery cell, even ones whose image had
+ * already loaded.
  */
-export function SmartImage({
+export const SmartImage = React.memo(function SmartImage({
   src,
   alt,
   className,
@@ -183,4 +194,4 @@ export function SmartImage({
       />
     </div>
   );
-}
+});

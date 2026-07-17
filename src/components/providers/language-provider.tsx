@@ -22,8 +22,8 @@ const STORAGE_KEY = "portfolio-locale";
 // switches language so the tab always reads in the active language.
 // (The static <title> in layout.tsx serves as the SSR default = fa.)
 const SITE_TITLE: Record<Locale, string> = {
-  fa: "هادی حیدری طراح محصول",
-  en: "Hadi Heydari Product Designer",
+  fa: "هادی حیدری | طراحی محصول",
+  en: "Hadi Heydari | Product Designer",
 };
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {

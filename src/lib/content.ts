@@ -69,16 +69,16 @@ export const projects: Project[] = [
     cover: "/images/Dotaar Dashboard/Thumbnail.webp",
     accent: "from-amber-200/60 to-rose-200/40 dark:from-amber-500/10 dark:to-rose-500/5",
     tagline: {
-      fa: "پنل مدیریت اختصاصی برای رستوران‌ها و کافه‌ها",
-      en: "A dedicated management panel for restaurants & cafes",
+      fa: "سفارش‌گیری و مدیریت فروش",
+      en: "Ordering & sales management",
     },
     overview: {
-      fa: "سامانه‌ای برای سفارش‌گیری و فروش فروشگاه‌ها به‌ویژه رستوران‌ها و کافه‌ها که امکان ثبت سفارش حضوری و بیرون‌بر و همچنین مدیریت محصولات و تخفیف‌ها و رزرو میز و گزارش فروش و دیگر امکانات موردنیاز کسب‌وکار را پوشش می‌دهد. در این پروژه تمام مراحل طراحی محصول را به‌تنهایی انجام دادم و هدفم ساده‌سازی فرآیند سفارش‌گیری و افزایش درآمد کسب‌وکارها بود.",
-      en: "A platform for ordering and sales management for businesses, especially restaurants and cafes, that covers dine-in and takeout orders, product and discount management, table reservations, sales reports, and other business essentials. I handled the entire product design process solo, aiming to simplify ordering and boost business revenue.",
+      fa: "سامانه‌ای برای سفارش‌گیری و فروش فروشگاه‌ها به‌ویژه رستوران‌ها و کافه‌ها که امکان ثبت سفارش حضوری و بیرون‌بر و همچنین مدیریت محصولات و تخفیف‌ها و رزرو میز و گزارش فروش و دیگر امکانات موردنیاز کسب‌وکار را پوشش می‌دهد. در این پروژه تمام مراحل طراحی محصول را به‌تنهایی انجام دادم و هدفم ساده‌سازی فرآیند سفارش‌گیری و افزایش درآمد کسب‌وکارها بود",
+      en: "A platform for ordering and sales management for businesses, especially restaurants and cafes, that covers dine-in and takeout orders, product and discount management, table reservations, sales reports, and other business essentials. I handled the entire product design process solo, aiming to simplify ordering and boost business revenue",
     },
     roleDescription: {
-      fa: "هم‌بنیان‌گذار و تنها طراح محصول پروژه؛ از تحقیق کاربر و تحلیل رقبا تا یوزرفلو، وایرفریم و سیستم طراحی، تمام مسیر طراحی را به‌تنهایی و بدون همکار طراح پیش بردم.",
-      en: "Co-founder and sole product designer of the project; from user research and competitor analysis to user flows, wireframes, and the design system, I drove the entire design process alone with no fellow designer.",
+      fa: "هم‌بنیان‌گذار و تنها طراح محصول پروژه؛ از تحقیق کاربر و تحلیل رقبا تا یوزرفلو، وایرفریم و سیستم طراحی، تمام مسیر طراحی را به‌تنهایی و بدون همکار طراح پیش بردم",
+      en: "Co-founder and sole product designer of the project; from user research and competitor analysis to user flows, wireframes, and the design system, I drove the entire design process alone with no fellow designer",
     },
     responsibilities: [
       {
@@ -170,16 +170,16 @@ export const projects: Project[] = [
     cover: "/images/Dotaar Store/Thumbnail.webp",
     accent: "from-emerald-200/60 to-teal-200/40 dark:from-emerald-500/10 dark:to-teal-500/5",
     tagline: {
-      fa: "تجربه سفارش‌گیری آنلاین برای مشتریان",
-      en: "The online ordering experience for customers",
+      fa: "ثبت و پیگیری سفارش",
+      en: "Place & track orders",
     },
     overview: {
-      fa: "فضایی برای سفارش آنلاین فروشگاه‌ها که مشتریان می‌توانند در آن محصولات را ببینند و سفارش خود را ثبت کنند و روش دریافت را انتخاب کنند و وضعیت سفارش را پیگیری کنند. در این پروژه تمام مراحل طراحی محصول را به‌تنهایی انجام دادم و هدفم ایجاد فرآیندی ساده برای ثبت سفارش مشتریان بود.",
-      en: "An online ordering space for businesses where customers can browse products, place orders, choose a delivery method, and track their order status. I handled the entire product design process solo, aiming to create a simple ordering flow for customers.",
+      fa: "فضایی برای سفارش آنلاین فروشگاه‌ها که مشتریان می‌توانند در آن محصولات را ببینند و سفارش خود را ثبت کنند و روش دریافت را انتخاب کنند و وضعیت سفارش را پیگیری کنند. در این پروژه تمام مراحل طراحی محصول را به‌تنهایی انجام دادم و هدفم ایجاد فرآیندی ساده برای ثبت سفارش مشتریان بود",
+      en: "An online ordering space for businesses where customers can browse products, place orders, choose a delivery method, and track their order status. I handled the entire product design process solo, aiming to create a simple ordering flow for customers",
     },
     roleDescription: {
-      fa: "طراحی کامل تجربه کاربری سمت مشتری به‌تنهایی، با هماهنگی دقیق با داشبورد مدیریتی که آن را هم خودم طراحی کرده بودم.",
-      en: "I designed the entire customer-side user experience alone, in close coordination with the management dashboard that I had also designed myself.",
+      fa: "طراحی کامل تجربه کاربری سمت مشتری به‌تنهایی، با هماهنگی دقیق با داشبورد مدیریتی که آن را هم خودم طراحی کرده بودم",
+      en: "I designed the entire customer-side user experience alone, in close coordination with the management dashboard that I had also designed myself",
     },
     responsibilities: [
       {
@@ -267,16 +267,16 @@ export const projects: Project[] = [
     cover: "/images/Mafia Master/Thumbnail.webp",
     accent: "from-rose-200/60 to-orange-200/40 dark:from-rose-500/10 dark:to-orange-500/5",
     tagline: {
-      fa: "بازی اجتماعی مافیا با تجربه‌ای سینمایی",
-      en: "The social Mafia game with a cinematic experience",
+      fa: "دستیار هوشمند بازی مافیا",
+      en: "Smart assistant for Mafia game",
     },
     overview: {
-      fa: "مافیا مستر دستیار هوشمندی برای راویان بازی مافیاست که با مدیریت بازیکنان و تخصیص نقش‌ها و کنترل مراحل بازی و هدایت سناریوها اجرای بازی را به‌ویژه برای راویان مبتدی ساده‌تر و دقیق‌تر و منظم‌تر می‌کند. این پروژه فرصتی بود تا در قالب یک محصول کاملاً متفاوت توانایی خودم را در جنبه‌های مختلف طراحی محصول بسنجم و تجربه‌ای جدی از برنامه‌نویسی مبتنی بر هوش مصنوعی یا همان وایب کدینگ به دست بیاورم. توسعه پروژه کاملاً انفرادی انجام شد و تمام ایده‌پردازی‌ها و تعریف قابلیت‌ها و طراحی مسیرهای کاربری و منطق و ساختار محصول بر عهده من بود و هوش مصنوعی صرفاً در طراحی رابط کاربری و پیاده‌سازی فنی نقش داشت.",
-      en: "Mafia Master is a smart assistant for Mafia game narrators that manages players, assigns roles, controls game phases, and guides scenarios, making the game — especially for beginner narrators — simpler, more precise, and more organized. This project was an opportunity to test my abilities across different aspects of product design through a completely different kind of product and gain serious experience in AI-based programming, aka vibe coding. Development was entirely solo; all ideation, feature definition, user flow design, and product logic and structure were my responsibility, while AI played a role only in UI design and technical implementation.",
+      fa: "مافیا مستر دستیار هوشمندی برای راویان بازی مافیاست که با مدیریت بازیکنان و تخصیص نقش‌ها و کنترل مراحل بازی و هدایت سناریوها اجرای بازی را به‌ویژه برای راویان مبتدی ساده‌تر و دقیق‌تر و منظم‌تر می‌کند. این پروژه فرصتی بود تا در قالب یک محصول کاملاً متفاوت توانایی خودم را در جنبه‌های مختلف طراحی محصول بسنجم و تجربه‌ای جدی از برنامه‌نویسی مبتنی بر هوش مصنوعی یا همان وایب کدینگ به دست بیاورم. توسعه پروژه کاملاً انفرادی انجام شد و تمام ایده‌پردازی‌ها و تعریف قابلیت‌ها و طراحی مسیرهای کاربری و منطق و ساختار محصول بر عهده من بود و هوش مصنوعی صرفاً در طراحی رابط کاربری و پیاده‌سازی فنی نقش داشت",
+      en: "Mafia Master is a smart assistant for Mafia game narrators that manages players, assigns roles, controls game phases, and guides scenarios, making the game — especially for beginner narrators — simpler, more precise, and more organized. This project was an opportunity to test my abilities across different aspects of product design through a completely different kind of product and gain serious experience in AI-based programming, aka vibe coding. Development was entirely solo; all ideation, feature definition, user flow design, and product logic and structure were my responsibility, while AI played a role only in UI design and technical implementation",
     },
     roleDescription: {
-      fa: "اینجا برخلاف پروژه‌های قبلی، حتی یک خط طراحی هم نکردم؛ کل پروژه از ایده تا اجرا، دیباگ و بیلد نهایی، تنها توسط من و با ترکیب ابزارهای هوش مصنوعی (Firebase Studio، GitHub Copilot، Cursor و ChatGPT) پیش رفت — بدون هیچ همکار انسانی، چه طراح و چه توسعه‌دهنده.",
-      en: "Here, unlike previous projects, I didn't do a single line of design; the entire project — from idea to execution, debugging, and final build — was driven by me alone, combining AI tools (Firebase Studio, GitHub Copilot, Cursor, and ChatGPT), with no human collaborator, designer or developer.",
+      fa: "اینجا برخلاف پروژه‌های قبلی، حتی یک خط طراحی هم نکردم؛ کل پروژه از ایده تا اجرا، دیباگ و بیلد نهایی، تنها توسط من و با ترکیب ابزارهای هوش مصنوعی (Firebase Studio، GitHub Copilot، Cursor و ChatGPT) پیش رفت — بدون هیچ همکار انسانی، چه طراح و چه توسعه‌دهنده",
+      en: "Here, unlike previous projects, I didn't do a single line of design; the entire project — from idea to execution, debugging, and final build — was driven by me alone, combining AI tools (Firebase Studio, GitHub Copilot, Cursor, and ChatGPT), with no human collaborator, designer or developer",
     },
     responsibilities: [
       {
@@ -372,16 +372,16 @@ export const projects: Project[] = [
     cover: "/images/Dev Solutions/Thumbnail.webp",
     accent: "from-stone-200/60 to-neutral-200/40 dark:from-stone-500/10 dark:to-neutral-500/5",
     tagline: {
-      fa: "وب‌سایت و پنل مدیریت آژانس طراحی",
-      en: "Agency website & management panel",
+      fa: "آژانس طراحی سایت",
+      en: "Web design agency",
     },
     overview: {
-      fa: "آژانسی برای ارائه خدمات طراحی سایت و مدیریت شبکه‌های اجتماعی که در آن علاوه بر هم‌بنیان‌گذاری آژانس مسئول طراحی تجربه و رابط کاربری وب‌سایت و داشبورد هم بودم. تمام ساختار اطلاعات و مسیرهای کاربری و طراحی رابط کاربری توسط من انجام شد.",
-      en: "An agency offering web design and social media management services. Beyond co-founding the agency, I was responsible for designing the UX and UI of both the website and the dashboard. All information architecture, user flows, and UI design were done by me.",
+      fa: "آژانسی برای ارائه خدمات طراحی سایت و مدیریت شبکه‌های اجتماعی که در آن علاوه بر هم‌بنیان‌گذاری آژانس مسئول طراحی تجربه و رابط کاربری وب‌سایت و داشبورد هم بودم. تمام ساختار اطلاعات و مسیرهای کاربری و طراحی رابط کاربری توسط من انجام شد",
+      en: "An agency offering web design and social media management services. Beyond co-founding the agency, I was responsible for designing the UX and UI of both the website and the dashboard. All information architecture, user flows, and UI design were done by me",
     },
     roleDescription: {
-      fa: "هم‌بنیان‌گذار و تنها طراح تجربه و رابط کاربری آژانس؛ طراحی لندینگ‌پیج اصلی و داشبورد مدیریتی، بدون هیچ همکار طراح دیگری، تماماً بر عهده من بود.",
-      en: "Co-founder and sole UX/UI designer of the agency; the design of the main landing page and management dashboard was entirely on me, with no fellow designer.",
+      fa: "هم‌بنیان‌گذار و تنها طراح تجربه و رابط کاربری آژانس؛ طراحی لندینگ‌پیج اصلی و داشبورد مدیریتی، بدون هیچ همکار طراح دیگری، تماماً بر عهده من بود",
+      en: "Co-founder and sole UX/UI designer of the agency; the design of the main landing page and management dashboard was entirely on me, with no fellow designer",
     },
     responsibilities: [
       {
@@ -481,30 +481,30 @@ export const experiences: Experience[] = [
     start: "2022-09",
     current: false,
     summary: {
-      fa: "به‌عنوان هم‌بنیان‌گذار و طراح محصول دوتر، از مرحله ایده‌پردازی تا طراحی تجربه و رابط کاربری و تعریف جزئیات عملکرد را شخصاً بر عهده داشتم و در تعامل با همکار فنی، پیاده‌سازی محصول را پیش بردیم. دوتر پلتفرم آنلاین اشتراکی برای سفارش‌گیری و مدیریت داخلی رستوران‌ و کافه‌ها است؛ که خدمات اختصاصی برای هر فروشگاه ارائه می‌دهد و نیازهای اساسی آنها را پوشش می‌دهد. انگیزه پروژه از تجربه‌ی کار در رستوران نشأت گرفت، جایی که شناخت عمیقی از فرایند سفارش‌گیری، ارسال و مدیریت پیدا کردم.",
-      en: "As co-founder and product designer of Dotaar, I personally owned everything from ideation to UX/UI design and defining functional details, driving implementation with the technical co-founder. Dotaar is an online subscription platform for ordering and internal management of restaurants and cafes, offering dedicated services for each venue and covering their essential needs. The project's motivation grew from hands-on experience working in a restaurant, where I gained deep insight into the ordering, delivery, and management process.",
+      fa: "به‌عنوان هم‌بنیان‌گذار و طراح محصول دوتر، از مرحله ایده‌پردازی تا طراحی تجربه و رابط کاربری و تعریف جزئیات عملکرد را شخصاً بر عهده داشتم و در تعامل با همکار فنی، پیاده‌سازی محصول را پیش بردیم. دوتر پلتفرم آنلاین اشتراکی برای سفارش‌گیری و مدیریت داخلی رستوران‌ و کافه‌ها است؛ که خدمات اختصاصی برای هر فروشگاه ارائه می‌دهد و نیازهای اساسی آنها را پوشش می‌دهد. انگیزه پروژه از تجربه‌ی کار در رستوران نشأت گرفت، جایی که شناخت عمیقی از فرایند سفارش‌گیری، ارسال و مدیریت پیدا کردم",
+      en: "As co-founder and product designer of Dotaar, I personally owned everything from ideation to UX/UI design and defining functional details, driving implementation with the technical co-founder. Dotaar is an online subscription platform for ordering and internal management of restaurants and cafes, offering dedicated services for each venue and covering their essential needs. The project's motivation grew from hands-on experience working in a restaurant, where I gained deep insight into the ordering, delivery, and management process",
     },
     responsibilities: [
       {
-        fa: "تحقیق بر روی کاربران و تحلیل رقبا برای کشف نیازها، تعریف MVP و اولویت‌بندی ویژگی‌ها.",
-        en: "User research and competitor analysis to discover needs, define the MVP, and prioritize features.",
+        fa: "تحقیق بر روی کاربران و تحلیل رقبا برای کشف نیازها، تعریف MVP و اولویت‌بندی ویژگی‌ها",
+        en: "User research and competitor analysis to discover needs, define the MVP, and prioritize features",
       },
       {
-        fa: "طراحی یوزر فلوها، وایرفریم‌ها و سیستم طراحی (شامل کامپوننت لایبرری، دیزاین گاید و توکن‌های رنگ).",
-        en: "Designed user flows, wireframes, and the design system (component library, design guide, color tokens).",
+        fa: "طراحی یوزر فلوها، وایرفریم‌ها و سیستم طراحی (شامل کامپوننت لایبرری، دیزاین گاید و توکن‌های رنگ)",
+        en: "Designed user flows, wireframes, and the design system (component library, design guide, color tokens)",
       },
       {
-        fa: "آزمایش نسخه‌های آنلاین و محلی برای ایجاد تجربه کاربری یکپارچه.",
-        en: "Tested online and local versions to create a seamless user experience.",
+        fa: "آزمایش نسخه‌های آنلاین و محلی برای ایجاد تجربه کاربری یکپارچه",
+        en: "Tested online and local versions to create a seamless user experience",
       },
       {
-        fa: "تعریف ویژگی‌های اصلی مانند مدیریت سفارش (پیش‌سفارش، حضوری/بیرون‌بر، رزرو میز)، ناحیه‌بندی ارسال، تنظیم ساعات کاری، تخفیف‌ها و دسته‌بندی محصولات، و برخی موارد دیگر.",
-        en: "Defined core features such as order management (pre-order, dine-in/takeout, table reservation), delivery zoning, working hours, discounts, and product categorization, among others.",
+        fa: "تعریف ویژگی‌های اصلی مانند مدیریت سفارش (پیش‌سفارش، حضوری/بیرون‌بر، رزرو میز)، ناحیه‌بندی ارسال، تنظیم ساعات کاری، تخفیف‌ها و دسته‌بندی محصولات، و برخی موارد دیگر",
+        en: "Defined core features such as order management (pre-order, dine-in/takeout, table reservation), delivery zoning, working hours, discounts, and product categorization, among others",
       },
     ],
     goal: {
-      fa: "ایجاد سیستمی سفارشی و کارآمد برای کسب‌وکارهای متوسط و بزرگ، که عملیات روزانه را ساده‌تر کند. این پروژه مهارت‌های من در طراحی محصول را تقویت کرد و مستقیماً از تجربیات عملی‌ام بهره برد.",
-      en: "Create a customized, efficient system for medium and large businesses that simplifies daily operations. This project strengthened my product-design skills and drew directly on my hands-on experience.",
+      fa: "ایجاد سیستمی سفارشی و کارآمد برای کسب‌وکارهای متوسط و بزرگ، که عملیات روزانه را ساده‌تر کند. این پروژه مهارت‌های من در طراحی محصول را تقویت کرد و مستقیماً از تجربیات عملی‌ام بهره برد",
+      en: "Create a customized, efficient system for medium and large businesses that simplifies daily operations. This project strengthened my product-design skills and drew directly on my hands-on experience",
     },
   },
   {
@@ -515,21 +515,21 @@ export const experiences: Experience[] = [
     start: "2023-12",
     current: false,
     summary: {
-      fa: "به‌عنوان هم‌بنیان‌گذار و طراح تجربه و رابط کاربری در آژانس «دِو سولوشن» (Dev Solutions)، نقش کلیدی در تأسیس و هدایت این مجموعه خدمات طراحی سایت و مدیریت شبکه‌های اجتماعی ایفا کردم. این پروژه که پیش از راه‌اندازی نهایی سامانه «دوتر» آغاز شد، سکوی پرتابی برای ورود به چالش‌های پیشرفته‌تر طراحی محصول بود. کار در دِو سولوشن به من دیدی عملی درباره‌ی ساخت نمونه‌های اولیه، سنجش نیاز بازار، و طراحی محصول قابل عرضه داد.",
-      en: "As co-founder and UX/UI designer at the “Dev Solutions” agency, I played a key role in founding and leading this web-design and social-media-management service. Starting before Dotaar's final launch, it was a launchpad into more advanced product-design challenges. Working at Dev Solutions gave me a practical view of building prototypes, measuring market needs, and designing marketable products.",
+      fa: "به‌عنوان هم‌بنیان‌گذار و طراح تجربه و رابط کاربری در آژانس «دِو سولوشن» (Dev Solutions)، نقش کلیدی در تأسیس و هدایت این مجموعه خدمات طراحی سایت و مدیریت شبکه‌های اجتماعی ایفا کردم. این پروژه که پیش از راه‌اندازی نهایی سامانه «دوتر» آغاز شد، سکوی پرتابی برای ورود به چالش‌های پیشرفته‌تر طراحی محصول بود. کار در دِو سولوشن به من دیدی عملی درباره‌ی ساخت نمونه‌های اولیه، سنجش نیاز بازار، و طراحی محصول قابل عرضه داد",
+      en: "As co-founder and UX/UI designer at the “Dev Solutions” agency, I played a key role in founding and leading this web-design and social-media-management service. Starting before Dotaar's final launch, it was a launchpad into more advanced product-design challenges. Working at Dev Solutions gave me a practical view of building prototypes, measuring market needs, and designing marketable products",
     },
     responsibilities: [
       {
-        fa: "طراحی تجربه و رابط کاربری وب‌سایت اصلی دِو سولوشن، از جمله صفحات ارسال درخواست همکاری، وبلاگ آموزشی، و یک پنل مدیریت اختصاصی برای مشاهده و پردازش پیام‌های دریافتی کاربران.",
-        en: "Designed the UX/UI of the main Dev Solutions website, including collaboration-request pages, an educational blog, and a dedicated admin panel for viewing and processing incoming user messages.",
+        fa: "طراحی تجربه و رابط کاربری وب‌سایت اصلی دِو سولوشن، از جمله صفحات ارسال درخواست همکاری، وبلاگ آموزشی، و یک پنل مدیریت اختصاصی برای مشاهده و پردازش پیام‌های دریافتی کاربران",
+        en: "Designed the UX/UI of the main Dev Solutions website, including collaboration-request pages, an educational blog, and a dedicated admin panel for viewing and processing incoming user messages",
       },
       {
-        fa: "هدایت پروژه‌های طراحی وب برای مشتریان آژانس، با تمرکز بر طراحی رابط‌هایی کاربرمحور، ساده و اثربخش.",
-        en: "Led web-design projects for agency clients, focusing on user-friendly, simple, and effective interfaces.",
+        fa: "هدایت پروژه‌های طراحی وب برای مشتریان آژانس، با تمرکز بر طراحی رابط‌هایی کاربرمحور، ساده و اثربخش",
+        en: "Led web-design projects for agency clients, focusing on user-friendly, simple, and effective interfaces",
       },
       {
-        fa: "انجام تحقیقات کاربر و تحلیل رقبا برای تعریف ویژگی‌های کلیدی و ایجاد جریان‌های کاربری یکپارچه و هدفمند.",
-        en: "Conducted user research and competitor analysis to define key features and create integrated, purposeful user flows.",
+        fa: "انجام تحقیقات کاربر و تحلیل رقبا برای تعریف ویژگی‌های کلیدی و ایجاد جریان‌های کاربری یکپارچه و هدفمند",
+        en: "Conducted user research and competitor analysis to define key features and create integrated, purposeful user flows",
       },
     ],
   },
@@ -591,8 +591,8 @@ export const skillGroups: SkillGroup[] = [
     id: "design",
     label: { fa: "طراحی", en: "Design" },
     description: {
-      fa: "ساخت رابط و تجربه‌ی بصری محصول",
-      en: "Crafting the product's visual and interaction layer",
+      fa: "شکل‌دادن به تجربه و رابط کاربری محصول",
+      en: "Shaping the product's experience and interface",
     },
     items: [
       { fa: "سیستم طراحی", en: "Design Systems" },
@@ -606,8 +606,8 @@ export const skillGroups: SkillGroup[] = [
     id: "process",
     label: { fa: "فرایند", en: "Process" },
     description: {
-      fa: "روش‌های کشف نیاز و تعریف راه‌حل",
-      en: "Methods to discover needs and define solutions",
+      fa: "از کشف نیاز تا تعریف راه‌حل",
+      en: "From discovering needs to defining solutions",
     },
     items: [
       { fa: "حل مسئله", en: "Problem-Solving" },
@@ -618,19 +618,21 @@ export const skillGroups: SkillGroup[] = [
     ],
   },
   {
+    // NOTE — id kept as "tools" to preserve the CATEGORY_ICONS / CSS
+    // mapping in skills.tsx. The visible label changed from "ابزارها/Tools"
+    // to "مهارت‌های نرم/Soft Skills" per the user's content update.
     id: "tools",
-    label: { fa: "ابزارها", en: "Tools" },
+    label: { fa: "مهارت‌های نرم", en: "Soft Skills" },
     description: {
-      fa: "نرم‌افزارهایی که روزانه با آن‌ها کار می‌کنم",
-      en: "Software I work with daily",
+      fa: "توانمندی‌های فردی در همکاری و اجرا",
+      en: "Personal capabilities in collaboration and execution",
     },
     items: [
-      { fa: "فیگما", en: "Figma" },
-      { fa: "فیگ‌جم", en: "FigJam" },
-      { fa: "پروتوتایپ", en: "ProtoPie" },
-      { fa: "نوشن", en: "Notion" },
-      { fa: "فتوشاپ", en: "Photoshop" },
-      { fa: "ایلاستریتور", en: "Illustrator" },
+      { fa: "کار تیمی", en: "Teamwork" },
+      { fa: "سازگاری و انعطاف‌پذیری", en: "Adaptability & Flexibility" },
+      { fa: "مسئولیت‌پذیری", en: "Responsibility" },
+      { fa: "یادگیری سریع", en: "Fast Learning" },
+      { fa: "مدیریت اولویت‌ها", en: "Priority Management" },
     ],
   },
 ];
@@ -644,8 +646,8 @@ export const profile = {
   maritalStatus: { fa: "مجرد", en: "Single" },
   province: { fa: "خراسان رضوی", en: "Khorasan Razavi" },
   about: {
-    fa: "علاقه‌مند به حل مسئله و ساخت راه‌حل‌های نوآورانه‌ام؛ و باور دارم مسیر رشد از یادگیری مستمر، پذیرش بازخورد و اصلاح آگاهانه شکل می‌گیرد.",
-    en: "Passionate about problem-solving and building innovative solutions; I believe growth is shaped through continuous learning, embracing feedback, and conscious improvement.",
+    fa: "علاقه‌مند به حل مسئله و ساخت راه‌حل‌های نوآورانه‌ام؛ و باور دارم مسیر رشد از یادگیری مستمر، پذیرش بازخورد و اصلاح آگاهانه شکل می‌گیرد",
+    en: "Passionate about problem-solving and building innovative solutions; I believe growth is shaped through continuous learning, embracing feedback, and conscious improvement",
   },
   // Contact via Jobinja (email/phone are private — routed through Jobinja)
   jobinjaUrl: "https://jobinja.ir/user/heydarihadi",

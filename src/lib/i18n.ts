@@ -27,7 +27,7 @@ export const dict = {
       badgeDesignSystems: "میان سطح",
       badgeProductDesign: "طراحی محصول",
       tagline:
-        "علاقه‌مند به حل مسئله و ساخت راه‌حل‌های نوآورانه‌ام؛ و باور دارم مسیر رشد از یادگیری مستمر، پذیرش بازخورد و اصلاح آگاهانه شکل می‌گیرد.",
+        "علاقه‌مند به حل مسئله و ساخت راه‌حل‌های نوآورانه‌ام؛ و باور دارم مسیر رشد از یادگیری مستمر، پذیرش بازخورد و اصلاح آگاهانه شکل می‌گیرد",
       ctaWork: "دیدن نمونه‌کارها",
       ctaContact: "تماس با من",
       scroll: "اسکرول کنید",
@@ -45,7 +45,7 @@ export const dict = {
       label: "نمونه‌کارها",
       title: "پروژه‌های منتخب",
       subtitle:
-        "مجموعه‌ای از پروژه‌هایی که در آن‌ها نقش کلیدی در طراحی محصول، تجربه کاربری و ساخت سیستم‌های طراحی داشتم.",
+        "مجموعه‌ای از پروژه‌هایی که در آن‌ها نقش کلیدی در طراحی محصول، تجربه کاربری و ساخت سیستم‌های طراحی داشتم",
       viewProject: "مشاهده",
       // Modal
       modal: {
@@ -54,6 +54,8 @@ export const dict = {
         tools: "ابزارهای استفاده‌شده",
         gallery: "تصاویر نمونه‌کار",
         close: "بستن",
+        previous: "قبلی",
+        next: "بعدی",
         slideOf: "از",
         scrollHint: "اسکرول کنید",
         resetHint: "دو ضربه برای زوم/ریست",
@@ -71,7 +73,7 @@ export const dict = {
       label: "سوابق شغلی",
       title: "مسیر حرفه‌ای",
       subtitle:
-        "تجربه‌هایی که در آن‌ها از ایده‌پردازی تا پیاده‌سازی محصول، نقش محوری داشتم.",
+        "تجربه‌هایی که در آن‌ها از ایده‌پردازی تا پیاده‌سازی محصول، نقش محوری داشتم",
       present: "تاکنون",
       keyResponsibilities: "وظایف کلیدی",
       goal: "هدف",
@@ -81,11 +83,11 @@ export const dict = {
       label: "مهارت‌ها",
       title: "ابزارها و توانمندی‌ها",
       subtitle:
-        "ترکیبی از مهارت‌های نرم و تخصصی که در طراحی محصول به کار می‌گیرم.",
+        "ترکیبی از مهارت‌های تخصصی و نرم که در مسیر طراحی محصول از ایده تا اجرا به کار می‌گیرم",
       categories: {
         design: "طراحی",
         process: "فرایند",
-        tools: "ابزارها",
+        tools: "مهارت‌های نرم",
       },
     },
     // Contact
@@ -108,7 +110,7 @@ export const dict = {
     },
     // Footer
     footer: {
-      rights: "تمامی حقوق محفوظ است.",
+      rights: "تمامی حقوق محفوظ است",
       builtWith: "ساخته‌شده با عشق به طراحی",
       backToTop: "بازگشت به بالا",
     },
@@ -138,7 +140,7 @@ export const dict = {
       badgeDesignSystems: "Mid-Level",
       badgeProductDesign: "Product Design",
       tagline:
-        "Passionate about problem-solving and building innovative solutions; I believe growth is shaped through continuous learning, embracing feedback, and conscious improvement.",
+        "Passionate about problem-solving and building innovative solutions; I believe growth is shaped through continuous learning, embracing feedback, and conscious improvement",
       ctaWork: "View my work",
       ctaContact: "Get in touch",
       scroll: "Scroll",
@@ -154,7 +156,7 @@ export const dict = {
       label: "Work",
       title: "Selected projects",
       subtitle:
-        "A collection of projects where I played a key role in product design, user experience, and building design systems.",
+        "A collection of projects where I played a key role in product design, user experience, and building design systems",
       viewProject: "View",
       modal: {
         overview: "Project overview",
@@ -162,6 +164,8 @@ export const dict = {
         tools: "Tools used",
         gallery: "Portfolio images",
         close: "Close",
+        previous: "Previous",
+        next: "Next",
         slideOf: "of",
         scrollHint: "Scroll",
         resetHint: "Double-tap to zoom / reset",
@@ -178,7 +182,7 @@ export const dict = {
       label: "Experience",
       title: "Career path",
       subtitle:
-        "Roles where I owned the journey from ideation to product implementation.",
+        "Roles where I owned the journey from ideation to product implementation",
       present: "Present",
       keyResponsibilities: "Key responsibilities",
       goal: "Goal",
@@ -187,11 +191,11 @@ export const dict = {
       label: "Skills",
       title: "Tools & capabilities",
       subtitle:
-        "A blend of soft and specialized skills I bring to product design.",
+        "A blend of specialized and soft skills I apply throughout the product design journey, from idea to execution",
       categories: {
         design: "Design",
         process: "Process",
-        tools: "Tools",
+        tools: "Soft Skills",
       },
     },
     contact: {
@@ -212,7 +216,7 @@ export const dict = {
       callMe: "Contact me",
     },
     footer: {
-      rights: "All rights reserved.",
+      rights: "All rights reserved",
       builtWith: "Crafted with love for design",
       backToTop: "Back to top",
     },

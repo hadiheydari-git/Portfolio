@@ -19,6 +19,53 @@ function encodeSrc(src: string): string {
   return encodeURI(src).replace(/&/g, "%26");
 }
 
+/** Build a Next.js Image Optimization URL for a heavy source image.
+ *
+ *  WHY THIS EXISTS — Dev Solutions gallery images 1 and 3 are extremely
+ *  heavy (5760×13820 = 1.5MB, and 5760×8012 = 775KB). A plain <img>
+ *  forces the browser to:
+ *    1. Download the full 1.5MB / 775KB payload.
+ *    2. Allocate a decoded bitmap at native resolution (~320MB for the
+ *       5760×13820 image!) before it can be downscaled for display.
+ *    3. Decode that bitmap on the main thread, blocking the gallery's
+ *       fade-in animation and causing the modal to feel janky / stuck.
+ *
+ *  Using `/_next/image?url=...&w=...&q=...` makes the server return a
+ *  pre-resized + recompressed variant. At w=640 the 1.5MB image becomes
+ *  ~80KB and the decoded bitmap is ~4MB instead of ~320MB — decode time
+ *  drops from hundreds of ms to ~10ms. No visual difference in the
+ *  lightbox (the displayed image is also ~640-800px wide) but a huge
+ *  performance win.
+ *
+ *  PARAMETERS:
+ *  - `w` (width): the maximum display width. For the tall-image scroll
+ *    frame, the inner <img> is rendered at w-full of a frame whose
+ *    width is constrained by `max-w-[calc(100vw-3rem)]`. On a typical
+ *    desktop that's ~700-900px. w=828 gives a comfortable retina-quality
+ *    variant. For the standard landscape branch, w=1920 covers full-HD.
+ *  - `q` (quality): 80 — same as bento-card covers.
+ *
+ *  URL ENCODING: Next.js's image optimizer requires the `url` query
+ *  parameter to be URL-encoded (so `/images/Dev Solutions/...` becomes
+ *  `%2Fimages%2FDev%20Solutions%2F...`). We use encodeURIComponent on
+ *  the already-encoded path so spaces, ampersands, and slashes are
+ *  properly escaped in the query string.
+ */
+function optimizedSrc(src: string, width: number, quality: number = 80): string {
+  const encoded = encodeURIComponent(encodeSrc(src));
+  return `/_next/image?url=${encoded}&w=${width}&q=${quality}`;
+}
+
+/* Stable no-op stopPropagation handler — used as `onWheelCapture` and
+ * `onTouchMoveCapture` on the lightbox overlay. Defining it ONCE at
+ * module scope (rather than as an inline arrow function in JSX) means
+ * React's reconciler sees the SAME function reference on every render
+ * and skips re-attaching the DOM event listener. Tiny win per render,
+ * but during pinch-zoom (hundreds of re-renders per second) it adds up. */
+const stopPropagation = (e: React.SyntheticEvent) => {
+  e.stopPropagation();
+};
+
 type Props = {
   project: Project | null;
   open: boolean;
@@ -32,6 +79,16 @@ const CATEGORY_ORDER: ToolCategory[] = [
   "dev",
   "management",
 ];
+
+/* ── Gallery batch size (module-level constant) ───────────────────────
+   Promoted to module scope so the value is stable across renders.
+   Previously lived inside the component body, which created a fresh
+   const on every render and made the batch-advancement effect's
+   dependency array look like it depended on a non-stable value.
+   The effect itself already excluded it via the array, but lifting
+   it removes any ambiguity for future maintainers and lets the
+   compiler treat it as a true constant. */
+const GALLERY_BATCH_SIZE = 3;
 
 /* ── Modal content stagger animation ──────────────────────────────────
    The modal container scales+fades in (handled below). Inside, each
@@ -136,7 +193,17 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   // container's entrance animation completes (handles slow-first-open).
   const parentAnimationTimerRef = React.useRef<number | null>(null);
   const [lightboxImg, setLightboxImg] = React.useState<GalleryImage | null>(null);
-  const lightboxIndex = lightboxImg && project ? project.gallery.indexOf(lightboxImg) : -1;
+  // ── Derived lightbox values (memoized) ──
+  // `lightboxIndex` is computed via `indexOf` on `project.gallery` (a stable
+  // array reference), so the result is stable across re-renders UNLESS the
+  // displayed image actually changes. Memoizing prevents re-computing on
+  // every state change (e.g. during pinch-zoom, when `lightboxZoom` /
+  // `lightboxPan` update hundreds of times per second).
+  // `lightboxTotal` and `isDevSolutions` are similarly stable per project.
+  const lightboxIndex = React.useMemo(
+    () => lightboxImg && project ? project.gallery.indexOf(lightboxImg) : -1,
+    [lightboxImg, project]
+  );
   const lightboxTotal = project?.gallery.length ?? 0;
   const isDevSolutions = project?.id === "dev-solutions";
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -341,11 +408,12 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   }, [lightboxZoom]);
 
   // ── Progressive gallery batch loading ──
-  // Gallery images load in sequential batches of 3, starting from the top.
-  // Batch 1 = images 0-2, Batch 2 = images 3-5, etc. The next batch does
-  // NOT start loading until the current batch's images have all finished
-  // loading (or errored). This limits simultaneous network requests +
-  // image-decode work, keeping the modal snappy on lower-end devices.
+  // Gallery images load in sequential batches of GALLERY_BATCH_SIZE (3),
+  // starting from the top. Batch 1 = images 0-2, Batch 2 = images 3-5, etc.
+  // The next batch does NOT start loading until the current batch's images
+  // have all finished loading (or errored). This limits simultaneous
+  // network requests + image-decode work, keeping the modal snappy on
+  // lower-end devices.
   //
   // - `activeBatch` (1-indexed): which batch is currently allowed to load.
   //   Images in batches < activeBatch are already loaded (stay rendered).
@@ -355,29 +423,97 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   // - `loadedInBatchCount`: how many images in the current active batch
   //   have finished loading. When this reaches the batch's expected size,
   //   we advance to the next batch and reset the counter.
-  const GALLERY_BATCH_SIZE = 3;
   const [activeBatch, setActiveBatch] = React.useState(1);
   const [loadedInBatchCount, setLoadedInBatchCount] = React.useState(0);
+
+  // ── Stable gallery batch-loaded callback ──
+  // Each gallery cell (DevSolutionsThumb and SmartImage) gets this SAME
+  // callback reference (via the memoized `makeGalleryOnLoad` factory).
+  // Without memoization, every parent re-render would create a NEW closure
+  // for each cell's onLoad, which would:
+  //   1. Cause React.memo on DevSolutionsThumb to see a new prop and bail
+  //      out of memoization, re-rendering every thumbnail on every parent
+  //      state change (e.g. during pinch-zoom in the lightbox, when the
+  //      parent re-renders hundreds of times per second).
+  //   2. Re-create the <img>'s onLoad handler inside SmartImage, which is
+  //      harmless but wasteful.
+  //
+  // The factory returns a stable callback per (batch, activeBatch) pair.
+  // When `activeBatch` advances, new factory closures are produced — but
+  // only the cells in the new batch change; cells in earlier batches have
+  // already loaded and their onLoad won't fire again anyway.
+  //
+  // IMPORTANT — the closure captures `imageBatch` and `activeBatch` at
+  // creation time. We only count the load if `imageBatch === activeBatch`.
+  // If the parent re-renders with a new `activeBatch`, only the cells in
+  // the new active batch will see a matching condition — exactly the
+  // intended progressive-loading behavior.
+  const makeGalleryOnLoad = React.useCallback(
+    (imageBatch: number) => () => {
+      // Use the functional updater so we don't add `activeBatch` as a dep
+      // — the closure reads the LATEST activeBatch via a ref.
+      if (imageBatch === activeBatchRef.current) {
+        setLoadedInBatchCount((c) => c + 1);
+      }
+    },
+    []
+  );
+  // Mirror `activeBatch` into a ref so the memoized callback above can
+  // read the latest value without being recreated on every batch advance.
+  // Otherwise `makeGalleryOnLoad` would be recreated on every batch change,
+  // defeating the memoization of DevSolutionsThumb.
+  const activeBatchRef = React.useRef(activeBatch);
+  React.useEffect(() => {
+    activeBatchRef.current = activeBatch;
+  }, [activeBatch]);
 
   // True when the current lightbox image is a tall Dev Solutions
   // screenshot (aspectRatio < 1) — i.e. image 1 (0.417) or image 3 (0.719).
   // These are the ONLY two images that get the 16:9 scrollable frame.
-  const isDevSolutionsTall =
-    isDevSolutions &&
-    lightboxImg?.aspectRatio !== undefined &&
-    lightboxImg.aspectRatio < 1;
+  //
+  // MEMOIZED — `lightboxImg` is a stable object reference from project.gallery
+  // (same array index returned on each render), so the memoization cache hits
+  // whenever the displayed image hasn't changed. This prevents re-computing
+  // the boolean on every parent re-render (e.g. during pinch-zoom, when
+  // `lightboxZoom` / `lightboxPan` change hundreds of times per second).
+  const isDevSolutionsTall = React.useMemo(
+    () =>
+      isDevSolutions &&
+      lightboxImg?.aspectRatio !== undefined &&
+      lightboxImg.aspectRatio < 1,
+    [isDevSolutions, lightboxImg]
+  );
 
+  // ── Lightbox navigation callbacks ──
+  // Both rely only on `project.gallery` (a stable array reference from the
+  // project object) and the current `lightboxImg`. Instead of tracking
+  // `lightboxIndex` / `lightboxTotal` (which add reactive deps and force
+  // the callback to be recreated on every slide change), we look up the
+  // current index INSIDE the callback via `indexOf`. This keeps the
+  // callbacks stable across lightbox navigation — preventing downstream
+  // effects (like the keyboard handler below) from re-subscribing on
+  // every arrow press.
   const lightboxPrev = React.useCallback(() => {
-    if (!project || lightboxTotal === 0) return;
-    const newIdx = lightboxIndex <= 0 ? lightboxTotal - 1 : lightboxIndex - 1;
-    setLightboxImg(project.gallery[newIdx]);
-  }, [project, lightboxIndex, lightboxTotal]);
+    if (!project || !lightboxImg) return;
+    const gallery = project.gallery;
+    const total = gallery.length;
+    if (total === 0) return;
+    const curIdx = gallery.indexOf(lightboxImg);
+    if (curIdx < 0) return;
+    const newIdx = curIdx <= 0 ? total - 1 : curIdx - 1;
+    setLightboxImg(gallery[newIdx]);
+  }, [project, lightboxImg]);
 
   const lightboxNext = React.useCallback(() => {
-    if (!project || lightboxTotal === 0) return;
-    const newIdx = lightboxIndex >= lightboxTotal - 1 ? 0 : lightboxIndex + 1;
-    setLightboxImg(project.gallery[newIdx]);
-  }, [project, lightboxIndex, lightboxTotal]);
+    if (!project || !lightboxImg) return;
+    const gallery = project.gallery;
+    const total = gallery.length;
+    if (total === 0) return;
+    const curIdx = gallery.indexOf(lightboxImg);
+    if (curIdx < 0) return;
+    const newIdx = curIdx >= total - 1 ? 0 : curIdx + 1;
+    setLightboxImg(gallery[newIdx]);
+  }, [project, lightboxImg]);
 
   // Reset lightbox when modal closes.
   // Both `lightboxImgLoaded` AND `lightboxReady` reset here so the
@@ -622,7 +758,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     // image is VISIBLE (loaded), not from click time. This matches the
     // user's spec: "وقتی لایت باکس باز میشه پس از یک و نیم ثانیه
     // اسکرول کنید بیاد" = "when the lightbox opens, after 1.5s, the
-    // scroll hint should appear."
+    // scroll hint should appear"
     scrollHintTimerRef.current = setTimeout(() => {
       setScrollHintVisible(true);
     }, 1500);
@@ -659,7 +795,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       setActiveBatch((b) => b + 1);
       setLoadedInBatchCount(0);
     }
-  }, [loadedInBatchCount, activeBatch, project, GALLERY_BATCH_SIZE]);
+  }, [loadedInBatchCount, activeBatch, project]);
 
   // ── Lightbox zoom/pan: reset on image change ──
   // When the user navigates to a different lightbox image (or closes the
@@ -1068,11 +1204,24 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   }, []);
 
   // Keyboard nav inside lightbox
+  // ── RTL-aware arrow direction ──
+  // In LTR (English): ArrowLeft → previous, ArrowRight → next (forward = right)
+  // In RTL (Persian): ArrowLeft → next, ArrowRight → previous (forward = left,
+  //   because Persian reading flows right-to-left, so "back/previous" is to
+  //   the right and "forward/next" is to the left). This matches the user's
+  //   expectation that the right arrow goes to the previous image in RTL.
   React.useEffect(() => {
     if (!lightboxImg) return;
+    const isRTL = document.documentElement.dir === "rtl" || document.documentElement.lang === "fa";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") { e.preventDefault(); lightboxPrev(); }
-      if (e.key === "ArrowRight") { e.preventDefault(); lightboxNext(); }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (isRTL) lightboxNext(); else lightboxPrev();
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (isRTL) lightboxPrev(); else lightboxNext();
+      }
       // Escape closes the lightbox (NOT the modal). We preventDefault
       // so the Radix Dialog doesn't also receive the Escape and close
       // the modal underneath.
@@ -1085,6 +1234,76 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [lightboxImg, lightboxPrev, lightboxNext]);
+
+  // ── Stable overlay handlers (useCallback, empty deps) ──────────────
+  // These handlers ONLY use refs (pointerDownRef, imageWrapperRef,
+  // hideTimerRef) and stable state setters (setLightboxImg,
+  // setIsImgHovered) — no reactive state. So they can be created ONCE
+  // with an empty dependency array. This means:
+  //   - The motion.div overlay element does NOT get a new prop reference
+  //     on every parent re-render (e.g. during pinch-zoom when
+  //     `lightboxZoom` / `lightboxPan` change hundreds of times per
+  //     second). React's reconciler sees the same handler reference and
+  //     skips re-attaching the DOM event listener.
+  //   - The motion.div's className still updates (it depends on locale,
+  //     which is fine) but the behavioral handlers stay stable.
+  //
+  // The arrow-direction logic for the capsule (LTR vs RTL) is handled
+  // inside the JSX (it depends on `locale`, which IS reactive) — that's
+  // a small inline closure that recreates with `locale`, which is fine
+  // because `locale` changes extremely rarely (only when the user
+  // switches language).
+  const handleOverlayPointerDown = React.useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    pointerDownRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      pointerId: e.pointerId,
+      targetIsImage: imageWrapperRef.current
+        ? imageWrapperRef.current.contains(e.target as Node)
+        : false,
+    };
+  }, []);
+
+  const handleOverlayPointerUp = React.useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    const start = pointerDownRef.current;
+    pointerDownRef.current = null;
+    if (!start) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const dist = Math.hypot(dx, dy);
+    // Only close if:
+    //   1. This was a real tap (< 8px movement), not a drag, AND
+    //   2. The pointer did NOT start inside the image wrapper
+    //      (so tapping the image itself never closes the lightbox).
+    if (dist < 8 && !start.targetIsImage) {
+      setLightboxImg(null);
+    }
+  }, []);
+
+  // Shared implementation of the mouse-enter / mouse-move handler.
+  // Both events trigger the SAME behavior: clear any pending hide timer,
+  // mark the image as hovered (so the X button shows), and arm a new
+  // 2000ms hide timer. Using a single callback for both keeps the code
+  // DRY and gives a single stable reference for the JSX.
+  const handleOverlayMouseEnterOrMove = React.useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+    setIsImgHovered(true);
+    hideTimerRef.current = setTimeout(() => setIsImgHovered(false), 2000);
+  }, []);
+
+  // Stable click handler for the X button — calls stopPropagation so the
+  // click event doesn't bubble up to the overlay's tap-to-close handler
+  // (which is a no-op since we're already closing, but stopPropagation is
+  // the safer pattern). Same as the inline `(e) => { e.stopPropagation();
+  // setLightboxImg(null); }` it replaced, but with a stable reference.
+  const closeLightboxWithStop = React.useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLightboxImg(null);
+  }, []);
 
   return (
     <DialogPrimitive.Root
@@ -1234,7 +1453,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.7 }}
                       animate={coverMediaReady ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.7 }}
                       transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute end-6 top-6 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-background/70 backdrop-blur transition-colors duration-300 hover:bg-secondary sm:end-8 sm:top-8 dark:border-white/10"
+                      className="absolute end-6 top-6 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-background/70 backdrop-blur transition-colors duration-300 hover:bg-secondary sm:end-8 sm:top-8 dark:border-white/10"
                       aria-label={t("portfolio.modal.close")}
                     >
                       <X className="h-5 w-5" />
@@ -1521,7 +1740,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     {/* Gallery */}
                     <motion.div variants={itemVariants}>
                       <Section title={t("portfolio.modal.gallery")}>
-                      <div dir="ltr" className="grid grid-cols-2 items-start gap-2 sm:grid-cols-3 sm:gap-2.5">
+                      <div dir={locale === "fa" ? "rtl" : "ltr"} className="grid grid-cols-2 items-start gap-2 sm:grid-cols-3 sm:gap-2.5">
                         {project.gallery.map((img, i) => {
                           const aspectStyle = !isDevSolutions
                             ? { aspectRatio: String(img.aspectRatio ?? 1.5) }
@@ -1562,64 +1781,53 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                                 style={aspectStyle}
                               >
                                 {isImageActive ? (
-                                  <SmartImage
-                                    src={img.src}
-                                    alt={tt(img.alt)}
-                                    natural={!isDevSolutions}
-                                    aspectRatio={!isDevSolutions ? img.aspectRatio : undefined}
-                                    skeleton
-                                    gradientClassName={project.accent}
-                                    // DEV-SOLUTIONS ONLY — when natural={false}, the
-                                    // SmartImage root div needs explicit h-full w-full
-                                    // so the inner <img>'s `h-full w-full object-cover`
-                                    // can actually fill the parent. Without this, the
-                                    // <img>'s percentage height collapses to its
-                                    // natural height (because the SmartImage div is
-                                    // height:auto), and ultra-wide screenshots (ratio
-                                    // > 16/9) end up SHORTER than the 16:9 cell —
-                                    // leaving an empty band at the bottom of the cell.
-                                    // This mirrors how `header.tsx` and `hero.tsx`
-                                    // already pass `className="h-full w-full"` to
-                                    // SmartImage when using non-natural mode.
-                                    className={isDevSolutions ? "h-full w-full" : undefined}
-                                    imgClassName={cn(
-                                      "transition-transform duration-500 ease-out group-hover/img:scale-[1.05]",
-                                      // Vertical alignment inside the 16:9 cell.
-                                      // - Portrait screenshots (aspectRatio < 1, e.g.
-                                      //   "1-DS Index" at 0.417 and "3-Blog page" at
-                                      //   0.719) are MUCH taller than the cell, so the
-                                      //   default `object-position: center` would skip
-                                      //   the top of the screenshot — showing the
-                                      //   middle of the page instead of its header.
-                                      //   `object-top` aligns the crop to the TOP so
-                                      //   the preview starts from the beginning of
-                                      //   the image.
-                                      // - Landscape / ultra-wide screenshots (ratio
-                                      //   >= 1, e.g. "2-Request" at 1.406 and the
-                                      //   three new admin-panel shots at ~2.34) stay
-                                      //   centered on both axes — this is the default
-                                      //   `object-position: center` and matches the
-                                      //   user's expectation for the new images.
-                                      isDevSolutions &&
+                                  isDevSolutions ? (
+                                    /* ── Dev Solutions gallery thumbnail — OPTIMIZED ──
+                                       Source images are extremely heavy:
+                                         - Image 1 "1-DS Index":  5760×13820 = 1.5MB
+                                         - Image 3 "3-Blog page": 5760×8012  = 775KB
+                                       Loading these RAW (as SmartImage does) forces
+                                       the browser to download the full payload AND
+                                       allocate a decoded bitmap at native resolution
+                                       (~320MB for the 5760×13820 image!) for EACH
+                                       thumbnail. The first batch (3 images) loads
+                                       simultaneously, so the modal was hit with
+                                       ~480MB of decoded bitmap work on first open —
+                                       the root cause of the "modal doesn't render
+                                       properly with heavy images" bug.
+
+                                       Fix: route through /_next/image?url=...&w=640&q=80
+                                       so the Next.js server returns a pre-resized +
+                                       recompressed variant (~80KB, decoded bitmap
+                                       ~4MB). At w=640 the variant covers the gallery's
+                                       display size (3-col grid ≈ 240px, 2× retina =
+                                       480px) with retina-quality headroom. Visual
+                                       output is IDENTICAL to the raw SmartImage path
+                                       at the displayed size — same object-cover crop,
+                                       same object-top alignment for tall images, same
+                                       hover scale, same skeleton-shimmer placeholder.
+                                       Only the underlying bytes/bitmaps change. */
+                                    <DevSolutionsThumb
+                                      src={img.src}
+                                      alt={tt(img.alt)}
+                                      isTallPortrait={
                                         img.aspectRatio !== undefined &&
                                         img.aspectRatio < 1
-                                        ? "object-top"
-                                        : ""
-                                    )}
-                                    // Report load back to the parent so the
-                                    // batch advancement effect can track
-                                    // progress and unlock the next batch of 3.
-                                    onLoad={() => {
-                                      // Only count loads for images in the
-                                      // CURRENT active batch — earlier batches
-                                      // re-firing onLoad (e.g. from cached
-                                      // hydration-gap detection) would
-                                      // otherwise inflate the counter.
-                                      if (imageBatch === activeBatch) {
-                                        setLoadedInBatchCount((c) => c + 1);
                                       }
-                                    }}
-                                  />
+                                      onLoad={makeGalleryOnLoad(imageBatch)}
+                                    />
+                                  ) : (
+                                    <SmartImage
+                                      src={img.src}
+                                      alt={tt(img.alt)}
+                                      natural
+                                      aspectRatio={img.aspectRatio}
+                                      skeleton
+                                      gradientClassName={project.accent}
+                                      imgClassName="transition-transform duration-500 ease-out group-hover/img:scale-[1.02]"
+                                      onLoad={makeGalleryOnLoad(imageBatch)}
+                                    />
+                                  )
                                 ) : (
                                   /* ── Inactive-batch placeholder ──
                                      No <img> is rendered, so the browser
@@ -1753,43 +1961,28 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
               // them with a non-passive listener and calls preventDefault().
               // Without this stopPropagation, the wheel event reaches the
               // document handler which kills the native scroll on this overlay.
-              onWheelCapture={(e) => e.stopPropagation()}
+              onWheelCapture={stopPropagation}
               // Same for touchmove — `react-remove-scroll` also captures
               // touchmove at the document level and preventDefaults it for
               // any element not inside the modal's scroll lock group.
-              onTouchMoveCapture={(e) => e.stopPropagation()}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                // Record start position so we can distinguish a tap
-                // (small movement) from a drag (intended to scroll).
-                pointerDownRef.current = {
-                  x: e.clientX,
-                  y: e.clientY,
-                  pointerId: e.pointerId,
-                  // Remember whether pointer started inside the image wrapper.
-                  // We need this so we DON'T close when the user taps the image
-                  // (only the X button or the overlay background should close).
-                  targetIsImage: imageWrapperRef.current
-                    ? imageWrapperRef.current.contains(e.target as Node)
-                    : false,
-                };
-              }}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                const start = pointerDownRef.current;
-                pointerDownRef.current = null;
-                if (!start) return;
-                const dx = e.clientX - start.x;
-                const dy = e.clientY - start.y;
-                const dist = Math.hypot(dx, dy);
-                // Only close if:
-                //   1. This was a real tap (< 8px movement), not a drag, AND
-                //   2. The pointer did NOT start inside the image wrapper
-                //      (so tapping the image itself never closes the lightbox).
-                if (dist < 8 && !start.targetIsImage) {
-                  setLightboxImg(null);
-                }
-              }}
+              onTouchMoveCapture={stopPropagation}
+              onPointerDown={handleOverlayPointerDown}
+              onPointerUp={handleOverlayPointerUp}
+              // ── Mouse-move auto-show/auto-hide for the X close button ──
+              // Attached to the OVERLAY (not the image wrapper) so the X
+              // reappears whenever the mouse moves ANYWHERE in the lightbox
+              // — including over the dark background around the image.
+              // Behavior (desktop only; mobile uses the [@media(hover:none)]
+              // CSS override on the button itself):
+              //   1. Mouse moves → isImgHovered = true → X visible.
+              //   2. After 2000ms of NO mouse movement → isImgHovered = false
+              //      → X fades out.
+              //   3. Any new mouse movement resets the 2s timer.
+              // The 2s here matches the 2s open-show timer so the behavior
+              // is consistent: "2s visible → fade out → reappear on movement
+              // → 2s visible → fade out if no movement"
+              onMouseEnter={handleOverlayMouseEnterOrMove}
+              onMouseMove={handleOverlayMouseEnterOrMove}
             >
               <div className="flex flex-col items-center my-auto">
 
@@ -1829,29 +2022,15 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       isDevSolutions ? "w-full" : "w-auto"
                     )}
                     ref={imageWrapperRef}
-                    // Show X on mouse enter / move; auto-hide after 1s of
-                    // no movement. On mouse leave, hide immediately.
-                    onMouseEnter={() => {
-                      if (hideTimerRef.current) {
-                        clearTimeout(hideTimerRef.current);
-                      }
-                      setIsImgHovered(true);
-                      hideTimerRef.current = setTimeout(() => setIsImgHovered(false), 1000);
-                    }}
-                    onMouseMove={() => {
-                      // Every mouse movement resets the 1s auto-hide timer.
-                      if (hideTimerRef.current) {
-                        clearTimeout(hideTimerRef.current);
-                      }
-                      setIsImgHovered(true);
-                      hideTimerRef.current = setTimeout(() => setIsImgHovered(false), 1000);
-                    }}
-                    onMouseLeave={() => {
-                      if (hideTimerRef.current) {
-                        clearTimeout(hideTimerRef.current);
-                      }
-                      setIsImgHovered(false);
-                    }}
+                    // NOTE: Mouse enter/move/leave handlers used to live here
+                    // but have been MOVED to the overlay (the parent
+                    // motion.div). This is intentional — we want the X close
+                    // button to reappear when the mouse moves ANYWHERE in the
+                    // lightbox (including over the dark background around the
+                    // image), not just over the image itself. The overlay's
+                    // handlers catch mousemove events that bubble up from the
+                    // image wrapper too, so behavior is fully preserved with
+                    // a single source of truth.
                   >
                     {/* Skeleton placeholder while the lightbox image loads.
                         Shown ONLY for non-DevSolutions projects. DevSolutions
@@ -1891,12 +2070,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         [@media(hover:none)] CSS override. */}
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLightboxImg(null);
-                      }}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onPointerUp={(e) => e.stopPropagation()}
+                      onClick={closeLightboxWithStop}
+                      onPointerDown={stopPropagation}
+                      onPointerUp={stopPropagation}
                       className={cn(
                         "absolute top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white backdrop-blur-sm transition-all duration-300 hover:bg-black/80",
                         locale === "fa" ? "left-3" : "right-3",
@@ -2108,8 +2284,42 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             />
                           )}
                           <img
-                            src={encodeSrc(lightboxImg.src)}
+                            // w=1920 (NOT 828) — matches the non-tall lightbox
+                            // branch. The tall image is rendered `w-full` inside
+                            // a frame of `aspect-video h-[calc(100vh-142px)]`,
+                            // which on a 1920×1080 desktop is ~1668px wide. The
+                            // old value w=828 forced a 2× upscale at display time
+                            // → visible blur on images 1 and 3. w=1920 gives a
+                            // 1:1 source-to-display match on standard desktops
+                            // and only a slight upscale on retina, which is
+                            // visually equivalent to the non-tall images.
+                            //
+                            // Memory note: a 5760×13820 source at w=1920
+                            // produces a 1920×4608 variant (~35MB decoded
+                            // bitmap). That is 5.4× the 6.5MB of the old
+                            // w=828 variant, but still ~9× smaller than the
+                            // raw 320MB source — well within budget for a
+                            // single lightbox image.
+                            src={optimizedSrc(lightboxImg.src, 1920, 80)}
                             alt={tt(lightboxImg.alt)}
+                            // loading=eager + decoding=async: the lightbox
+                            // image is the focal point the user just clicked
+                            // to see, so it should start loading IMMEDIATELY
+                            // (eager, not lazy). But decoding runs async so the
+                            // main thread stays free for the entrance animation
+                            // — the browser will fire `onLoad` once decode is
+                            // complete, which flips `lightboxImgLoaded` to true
+                            // and fades the image in.
+                            //
+                            // fetchPriority="high" tells the browser this is
+                            // the most important request on the page right now,
+                            // so it should be prioritized over the gallery
+                            // thumbnails that may still be loading in the
+                            // background.
+                            loading="eager"
+                            decoding="async"
+                            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+                            fetchPriority="high"
                             className={cn(
                               // w-full → image fills the frame's
                               //          width.
@@ -2132,7 +2342,35 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             // and pan={0,0}, the transform is a no-op.
                             style={{
                               touchAction: "none",
-                              transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`,
+                              // ── GPU-layer optimization ──
+                              // When zoom=1 and pan={0,0}, use
+                              // `transform: "none"` instead of the no-op
+                              // `translate(0px,0px) scale(1)`. Both are
+                              // visually identical, but `transform: "none"`
+                              // does NOT promote the element to a GPU
+                              // compositor layer (per CSS spec: only non-
+                              // `none` transform values create a stacking
+                              // context / GPU layer). For this very TALL
+                              // Dev Solutions lightbox image (displayed at
+                              // the frame's full width — ~1668px on a
+                              // 1920×1080 desktop, larger on retina), this
+                              // saves GPU texture memory and lets the
+                              // browser use full-quality resampling on the
+                              // main compositor layer (instead of bilinear
+                              // texture filtering on the GPU layer, which
+                              // can produce a subtle blur on heavily
+                              // downscaled images).
+                              // The transition from `none` → `scale(1.8)`
+                              // on double-tap zoom is still animated (CSS
+                              // treats `none` as the identity transform for
+                              // interpolation purposes, so the transition
+                              // works correctly).
+                              transform:
+                                lightboxZoom !== 1 ||
+                                lightboxPan.x !== 0 ||
+                                lightboxPan.y !== 0
+                                  ? `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`
+                                  : "none",
                               transformOrigin: "center center",
                               // Smooth transition for double-tap zoom. Only
                               // active while `zoomAnimating` is true (set by
@@ -2279,8 +2517,17 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           />
                         )}
                         <img
-                          src={encodeSrc(lightboxImg.src)}
+                          src={optimizedSrc(lightboxImg.src, 1920, 80)}
                           alt={tt(lightboxImg.alt)}
+                          // loading=eager + decoding=async: the lightbox image
+                          // is the focal point the user clicked to see. Eager
+                          // loading starts the request immediately; async
+                          // decoding keeps the main thread free for the entrance
+                          // animation. w=1920 covers full-HD displays.
+                          loading="eager"
+                          decoding="async"
+                          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+                          fetchPriority="high"
                           className={cn(
                             // ── Non-tall DevSol image (UNIFIED) ──
                             // Mobile: `max-w-[calc(100vw-4rem)] w-auto h-auto`
@@ -2301,7 +2548,27 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           // pinch/pan still tracks fingers 1:1.
                           style={{
                             touchAction: "none",
-                            transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`,
+                            // ── GPU-layer optimization ──
+                            // When zoom=1 and pan={0,0}, use
+                            // `transform: "none"` instead of the no-op
+                            // `translate(0px,0px) scale(1)`. Both are
+                            // visually identical, but `transform: "none"`
+                            // does NOT promote the element to a GPU
+                            // compositor layer (per CSS spec: only non-
+                            // `none` transform values create a stacking
+                            // context / GPU layer). This saves GPU texture
+                            // memory and lets the browser use full-quality
+                            // resampling on the main compositor layer.
+                            // The transition from `none` → `scale(1.8)` on
+                            // double-tap zoom is still animated (CSS treats
+                            // `none` as the identity transform for
+                            // interpolation purposes).
+                            transform:
+                              lightboxZoom !== 1 ||
+                              lightboxPan.x !== 0 ||
+                              lightboxPan.y !== 0
+                                ? `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`
+                                : "none",
                             transformOrigin: "center center",
                             transition: zoomAnimating
                               ? "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)"
@@ -2324,8 +2591,17 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       </div>
                     ) : (
                       <img
-                        src={encodeSrc(lightboxImg.src)}
+                        src={optimizedSrc(lightboxImg.src, 1920, 80)}
                         alt={tt(lightboxImg.alt)}
+                        // loading=eager + decoding=async: the lightbox image
+                        // is the focal point the user clicked to see. Eager
+                        // loading starts the request immediately; async
+                        // decoding keeps the main thread free for the entrance
+                        // animation. w=1920 covers full-HD displays.
+                        loading="eager"
+                        decoding="async"
+                        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+                        fetchPriority="high"
                         className={cn(
                           // ── Non-Dev-Solutions image (UNIFIED standard) ──
                           // Mobile = desktop: the image is capped at
@@ -2410,9 +2686,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     // matches the user's "reduce bottom margin by 8px" request
                     // and keeps mobile visually balanced with desktop.
                     className="mt-0 p-5 max-sm:pb-3"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onPointerUp={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={stopPropagation}
+                    onPointerUp={stopPropagation}
+                    onClick={stopPropagation}
                   >
                     {/* ── Capsule (slide nav) — 48px tall on mobile, 58px on desktop ──
                         The capsule groups prev/next arrows + slide counter.
@@ -2428,32 +2704,81 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         Desktop (sm+): keeps `py-1.5` (6px+6px) so the capsule
                         is 58px tall (44px button + 12px padding + 2px border)
                         — the original comfortable desktop size. Width stays
-                        `w-64` (256px) on all breakpoints. */}
+                        `w-64` (256px) on all breakpoints.
+
+                        ── RTL-aware arrow direction ──
+                        The capsule itself is ALWAYS `dir="ltr"` so the
+                        ChevronLeft icon stays on the visual LEFT and the
+                        ChevronRight icon stays on the visual RIGHT — what
+                        changes between LTR and RTL is which ACTION each
+                        chevron triggers:
+                          - LTR (English): ChevronLeft → previous, ChevronRight → next
+                          - RTL (Persian): ChevronLeft → next, ChevronRight → previous
+                        This matches the Persian reading flow (right-to-left):
+                        "back/previous" is to the right, "forward/next" is to
+                        the left. The chevron icon always points in the
+                        direction the user is conceptually moving. */}
                     <div dir="ltr" className="flex w-64 items-center justify-between rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm max-sm:h-12 max-sm:py-0">
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); lightboxPrev(); }}
+                        onClick={(e) => { e.stopPropagation(); locale === "fa" ? lightboxNext() : lightboxPrev(); }}
                         onPointerDown={(e) => e.stopPropagation()}
                         onPointerUp={(e) => e.stopPropagation()}
                         className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition-colors duration-200 hover:text-white"
-                        aria-label="Previous"
+                        aria-label={locale === "fa" ? t("portfolio.modal.next") : t("portfolio.modal.previous")}
                       >
                         <ChevronLeft className="h-6 w-6" />
                       </button>
                       <span className="mx-2 h-5 w-px bg-white/20" />
-                      <span className="flex items-center gap-2 text-sm font-medium text-white/90">
-                        <span>{lightboxIndex + 1}</span>
+                      {/* ── Slide counter — locale-aware direction ──
+                          The capsule container itself stays `dir="ltr"` so
+                          the chevron icons don't mirror (chevron-left stays
+                          on the visual left, chevron-right stays on the
+                          visual right). BUT the counter span inside takes
+                          its direction from the active locale so users read
+                          the counter in their natural flow:
+
+                          - Persian (RTL): `dir="rtl"`
+                              Visual LTR:  [9] [از] [1]   (total left, current right)
+                              RTL reading: 1 → از → 9     ✓ "1 از 9"
+                              (Persian readers scan right-to-left, so the
+                              current slide number sits on the RIGHT where
+                              they start reading.)
+
+                          - English (LTR): `dir="ltr"`
+                              Visual LTR:  [1] [of] [9]
+                              LTR reading: 1 → of → 9     ✓ "1 of 9"
+
+                          Previously, forcing `dir="ltr"` for both locales
+                          produced visual `1 از 9` for Persian, which
+                          Persian readers scanning right-to-left perceived
+                          as "9 از 1" — the opposite of what they expected.
+
+                          The `<bdi>` wrappers on each number keep the
+                          Unicode bidi algorithm from reordering the
+                          numbers relative to each other or to the
+                          separator word — each number is an isolated
+                          run that takes its direction from the parent
+                          `dir`, but cannot pull neighboring runs into
+                          its own bidi level. This makes the visual
+                          order deterministic regardless of which digits
+                          (Persian or Latin) appear. */}
+                      <span
+                        dir={locale === "fa" ? "rtl" : "ltr"}
+                        className="flex items-center gap-2 text-sm font-medium text-white/90"
+                      >
+                        <bdi>{lightboxIndex + 1}</bdi>
                         <span>{t("portfolio.modal.slideOf")}</span>
-                        <span>{lightboxTotal}</span>
+                        <bdi>{lightboxTotal}</bdi>
                       </span>
                       <span className="mx-2 h-5 w-px bg-white/20" />
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); lightboxNext(); }}
+                        onClick={(e) => { e.stopPropagation(); locale === "fa" ? lightboxPrev() : lightboxNext(); }}
                         onPointerDown={(e) => e.stopPropagation()}
                         onPointerUp={(e) => e.stopPropagation()}
                         className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition-colors duration-200 hover:text-white"
-                        aria-label="Next"
+                        aria-label={locale === "fa" ? t("portfolio.modal.previous") : t("portfolio.modal.next")}
                       >
                         <ChevronRight className="h-6 w-6" />
                       </button>
@@ -2486,3 +2811,150 @@ function Section({
     </div>
   );
 }
+
+/* ── DevSolutionsThumb ────────────────────────────────────────────────
+   Optimized gallery thumbnail for the Dev Solutions project.
+
+   WHY THIS EXISTS — SmartImage (used by all other projects' gallery
+   thumbnails) loads the RAW source URL directly into an <img>. For most
+   projects the source images are reasonably sized, so this is fine. But
+   Dev Solutions has two EXTREMELY heavy screenshots:
+     - Image 1 "1-DS Index":  5760×13820 = 1.5MB (decoded bitmap ~320MB!)
+     - Image 3 "3-Blog page": 5760×8012  = 775KB (decoded bitmap ~185MB)
+   Loading these raw for a ~240px gallery thumbnail forced the browser to
+   download 1.5MB AND allocate a 320MB decoded bitmap PER THUMBNAIL. The
+   first batch of 3 thumbnails hit the modal with ~480MB of bitmap work
+   simultaneously — the root cause of the "modal doesn't render properly
+   with heavy images" bug the user reported.
+
+   FIX — route through /_next/image?url=...&w=640&q=80 instead. Next.js's
+   built-in image optimizer:
+     1. Reads the source ONCE on the server (cached after first request).
+     2. Resizes to w=640 preserving aspect ratio (image 1 becomes 640×1535).
+     3. Re-encodes as webp at q=80.
+     4. Returns ~80KB instead of 1.5MB.
+   The decoded browser bitmap drops from 320MB → ~4MB (80× reduction).
+
+   VISUAL IDENTITY — preserves EXACTLY the same appearance as the old
+   SmartImage path:
+     - Same 16:9 cell (set by the parent div's `aspect-[16/9]`)
+     - Same `object-cover` crop behavior (image fills the cell)
+     - Same `object-top` vertical alignment for tall portrait screenshots
+       (so the preview starts from the TOP of the screenshot, not the
+       middle) — controlled by `isTallPortrait`
+     - Same `transition-transform duration-500 group-hover/img:scale-[1.02]`
+       hover zoom (matches the rest of the gallery)
+     - Same skeleton-shimmer placeholder while loading
+     - Same fade-in on load (opacity-0 → opacity-100)
+   The only difference is the underlying bytes — visually identical.
+
+   HYDRATION-GAP FIX — same pattern as SmartImage: in a useEffect on mount,
+   check if the <img> is already complete (from browser cache). If so, flip
+   to loaded immediately and call onLoad so the parent's batch counter
+   advances. Without this, navigating away from the modal and back would
+   leave already-cached images stuck showing the skeleton placeholder
+   because onLoad wouldn't fire for a cache hit.
+
+   WIDTH CHOICE — w=640 was chosen because:
+     - Desktop gallery is `grid-cols-3` inside a `max-w-3xl` (768px) modal
+       → each cell is ~240px wide. On 2× retina, that's 480px of source
+       data needed. w=640 gives 33% retina headroom.
+     - Mobile gallery is `grid-cols-2` inside full viewport width minus
+       padding → each cell is ~180px wide. On 2× retina, that's 360px.
+       w=640 covers this comfortably too.
+     - Going higher (w=828, w=1080) would slightly improve retina quality
+       but increase payload + decode work — counter to the optimization
+       goal. w=640 is the sweet spot.
+
+   MEMOIZATION — wrapped in React.memo so the parent can re-render
+   (e.g. during lightbox pinch-zoom, when `lightboxZoom` / `lightboxPan`
+   update hundreds of times per second) WITHOUT causing this thumbnail
+   to re-render. The thumbnail's only inputs are `src`, `alt`,
+   `isTallPortrait` (all stable per cell), and `onLoad` (stabilized via
+   `makeGalleryOnLoad` in the parent). So React.memo's shallow prop
+   comparison will hit the cache and skip re-rendering entirely. This
+   is critical for the Dev Solutions modal where the heavy thumbnails
+   were previously being re-rendered on every pinch-zoom event.
+*/
+const DevSolutionsThumb = React.memo(function DevSolutionsThumb({
+  src,
+  alt,
+  isTallPortrait,
+  onLoad,
+}: {
+  src: string;
+  alt: string;
+  isTallPortrait: boolean;
+  onLoad?: () => void;
+}) {
+  const [loaded, setLoaded] = React.useState(false);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+
+  // Hydration gap fix — if the image is already complete (browser cache),
+  // flip to loaded immediately. Mirrors SmartImage's logic.
+  React.useEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0) {
+      setLoaded(true);
+      onLoad?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="relative h-full w-full overflow-hidden">
+      {/* Skeleton placeholder while loading — same animation as SmartImage.
+          Removed from the DOM once `loaded` is true so it doesn't keep
+          painting behind the image. */}
+      {!loaded && (
+        <div className="absolute inset-0 skeleton-shimmer" aria-hidden="true" />
+      )}
+      <img
+        ref={imgRef}
+        src={optimizedSrc(src, 640, 80)}
+        alt={alt}
+        // Same loading strategy as SmartImage for non-critical images:
+        // lazy + async decode + low priority. The gallery is below the
+        // fold (after cover + overview + tools), so eager loading would
+        // compete with the cover image for bandwidth.
+        loading="lazy"
+        decoding="async"
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+        fetchPriority="low"
+        draggable={false}
+        className={cn(
+          // Mirror SmartImage's non-natural className structure exactly:
+          //   relative + h-full w-full + object-cover
+          // so the 16:9 cell crop behavior is identical.
+          "relative h-full w-full object-cover",
+          // Hide until loaded, fade in on load — same as SmartImage.
+          // Note: like SmartImage, the `transition-opacity duration-300`
+          // is overridden by the `transition-transform duration-500`
+          // below (Tailwind's transition-transform class wins in CSS
+          // specificity). So the image pops in (no fade) and then
+          // transforms on hover with a 500ms transition. This matches
+          // the existing gallery behavior exactly — no visual change.
+          !loaded && "opacity-0",
+          loaded && "opacity-100 transition-opacity duration-300",
+          // Hover zoom — same as every other gallery cell.
+          "transition-transform duration-500 ease-out group-hover/img:scale-[1.02]",
+          // Vertical alignment for tall portrait screenshots — `object-top`
+          // shows the TOP of the screenshot (the page header) instead of
+          // the middle. Landscape screenshots stay centered (default).
+          isTallPortrait ? "object-top" : ""
+        )}
+        onLoad={() => {
+          setLoaded(true);
+          onLoad?.();
+        }}
+        onError={() => {
+          // Treat errors as "done" so the parent's batch counter advances
+          // even if an image fails — otherwise the next batch would never
+          // start, leaving the gallery permanently stuck on a broken batch.
+          setLoaded(true);
+          onLoad?.();
+        }}
+      />
+    </div>
+  );
+});

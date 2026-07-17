@@ -66,8 +66,15 @@ const KEYWORD_ICONS: Record<string, LucideIcon> = {
   Illustrator: PenToolIcon,
 };
 
-/** Get the icon for a keyword; falls back to a generic dot if no match. */
-function getKeywordIcon(en: string): LucideIcon | null {
+/** Get the icon for a keyword; falls back to a generic dot if no match.
+ *
+ *  `forceDot` — when true, ALWAYS returns null regardless of whether the
+ *  keyword has an icon in KEYWORD_ICONS. Used for the "Soft Skills" card
+ *  (group.id === "tools") where the user wants every keyword rendered
+ *  as a plain dot with no icon, for visual consistency.
+ */
+function getKeywordIcon(en: string, forceDot: boolean = false): LucideIcon | null {
+  if (forceDot) return null;
   return KEYWORD_ICONS[en] || null;
 }
 
@@ -104,7 +111,10 @@ export function Skills() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {group.items.map((item, idx) => {
-                  const Icon = getKeywordIcon(item.en);
+                  // All skill keywords render as a plain dot — no icons,
+                  // for visual consistency across all three cards
+                  // (Design, Process, Soft Skills).
+                  const Icon = getKeywordIcon(item.en, true);
                   return (
                     <span
                       key={idx}

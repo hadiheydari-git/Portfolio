@@ -165,8 +165,31 @@
     font-feature-settings: "ss01";
   }
 
+  /* ── Text selection color (per-theme) ─────────────────────────────
+     Browser default ::selection uses a blue tint that clashes with the
+     site's warm-neutral palette. We override it with a soft neutral
+     highlight that adapts to each theme so selected text is always
+     visible against the page background.
+
+     - Light theme: dark tint (0.18L / 22% alpha) over a near-white
+       background → reads as a subtle gray highlight (similar to macOS
+       Finder selection).
+     - Dark theme: light tint (0.97L / 26% alpha) over a dark
+       background → reads as a soft white highlight. The previous
+       single rule used a DARK tint at 18% opacity, which was invisible
+       against the already-dark `.dark` background.
+
+     We do NOT force a `color` on `::selection` — letting it inherit
+     means muted captions stay muted, headings keep their color, etc.
+     Only the background changes. */
   ::selection {
-    background: oklch(0.18 0.004 95 / 0.18);
+    background: var(--selection-bg);
+  }
+  :root {
+    --selection-bg: oklch(0.18 0.004 95 / 0.22);
+  }
+  .dark {
+    --selection-bg: oklch(0.97 0.002 95 / 0.26);
   }
 
   /* Header entrance — NO animation. Any CSS animation with fill-mode

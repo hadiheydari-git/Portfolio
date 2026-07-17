@@ -19,9 +19,10 @@ type Props = {
  * Returns a render-prop so the parent can format (Persian digits, "+", etc).
  *
  * Robustness notes:
- * - Uses `amount: 0.2` (20% visible) instead of a fixed negative margin,
- *   which is more reliable on mobile where the element may already be in
- *   view at mount.
+ * - Uses `amount: 0.1` (10% visible) so the count starts as soon as the
+ *   stat peeks into view, with less scroll required than the old 0.2.
+ *   Combined with RevealOnScroll's positive bottom margin in
+ *   reveal-on-scroll.tsx, the whole section feels more responsive.
  * - Has a fallback timer (1.5s) that force-starts the animation if the
  *   IntersectionObserver never fires — fixes the mobile bug where the
  *   stat would stay at "0" because the observer missed the element.
@@ -29,7 +30,7 @@ type Props = {
  */
 export function CountUp({ to, duration = 2600, delay = 200, children }: Props) {
   const ref = React.useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.2 });
+  const inView = useInView(ref, { once: true, amount: 0.1 });
   const [value, setValue] = React.useState(0);
   const startedRef = React.useRef(false);
   const controlsRef = React.useRef<{ stop: () => void } | null>(null);

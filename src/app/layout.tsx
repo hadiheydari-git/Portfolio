@@ -41,9 +41,9 @@ export const metadata: Metadata = {
   // Default SSR title = Persian (the default language). Updates
   // dynamically to English when the user switches language (see
   // LanguageProvider's document.title sync on locale change).
-  title: "هادی حیدری طراح محصول",
+  title: "هادی حیدری | طراحی محصول",
   description:
-    "Portfolio of Hadi Heydari, a Product Designer crafting innovative digital products. طراحی محصول، سیستم طراحی و تجربه کاربری.",
+    "Portfolio of Hadi Heydari, a Product Designer crafting innovative digital products. طراحی محصول، سیستم طراحی و تجربه کاربری",
   keywords: [
     "Product Designer",
     "طراح محصول",
@@ -66,9 +66,9 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Hadi Heydari Product Designer",
+    title: "Hadi Heydari | Product Designer",
     description:
-      "Portfolio of Hadi Heydari, a Product Designer crafting innovative digital products.",
+      "Portfolio of Hadi Heydari, a Product Designer crafting innovative digital products",
     type: "website",
   },
 };
