@@ -644,7 +644,7 @@ export const profile = {
   birthYear: { fa: "۱۳۸۲", en: "2003" },
   gender: { fa: "مرد", en: "Male" },
   maritalStatus: { fa: "مجرد", en: "Single" },
-  province: { fa: "خراسان رضوی", en: "Khorasan Razavi" },
+  province: { fa: "مشهد", en: "Mashhad" },
   about: {
     fa: "علاقه‌مند به حل مسئله و ساخت راه‌حل‌های نوآورانه‌ام؛ و باور دارم مسیر رشد از یادگیری مستمر، پذیرش بازخورد و اصلاح آگاهانه شکل می‌گیرد",
     en: "Passionate about problem-solving and building innovative solutions; I believe growth is shaped through continuous learning, embracing feedback, and conscious improvement",
