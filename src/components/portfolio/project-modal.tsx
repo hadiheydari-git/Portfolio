@@ -2007,13 +2007,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
               // them with a non-passive listener and calls preventDefault().
               // Without this stopPropagation, the wheel event reaches the
               // document handler which kills the native scroll on this overlay.
-              onWheelCapture={(e) => {
-                // Only isolate the wheel while it is being used for zoom.
-                // When inactive, allow the tall-image frame to receive the
-                // event and perform its normal vertical scroll.
-                if (wheelZoomActive && imageWrapperRef.current?.contains(e.target as Node)) {
-                  e.stopPropagation();
-                }
+              onWheel={(e) => {
+                // Consume wheel events at the lightbox boundary so they can
+                // never scroll the page behind it. The tall-image frame has
+                // already handled its own inactive-zoom scrolling by the
+                // time this bubbling handler runs.
+                e.preventDefault();
+                e.stopPropagation();
               }}
               // Same for touchmove — `react-remove-scroll` also captures
               // touchmove at the document level and preventDefaults it for
@@ -2289,6 +2289,18 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             above). */}
                         <div
                           ref={lightboxScrollFrameRef}
+                          onWheel={(e) => {
+                            // At 1x, the image itself must remain a normal
+                            // vertical wheel-scroll region. The image wheel
+                            // handler intentionally returns in this state,
+                            // so handle the scroll explicitly here and keep
+                            // it contained inside the frame.
+                            if (!wheelZoomActive && e.deltaY !== 0) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              e.currentTarget.scrollTop += e.deltaY;
+                            }
+                          }}
                           onScroll={(e) => {
                             // Only dismiss the hint when the user has
                             // scrolled MORE than 5px. This 5px threshold
