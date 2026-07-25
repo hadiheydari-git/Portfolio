@@ -289,9 +289,6 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   // touch-action: none on the <img> tells the browser NOT to handle any
   // touch gesture natively, so JS receives all pointer events.
   const [lightboxZoom, setLightboxZoom] = React.useState(1);
-  // Desktop wheel zoom is intentionally opt-in: it becomes active only
-  // after a double-click zoom-in and is disabled again at 1x.
-  const [wheelZoomActive, setWheelZoomActive] = React.useState(false);
   const [lightboxPan, setLightboxPan] = React.useState({ x: 0, y: 0 });
   const zoomPointersRef = React.useRef<Map<number, { x: number; y: number }>>(new Map());
   // ── Pinch gesture start state ──
@@ -644,7 +641,6 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     setLightboxPan({ x: 0, y: 0 });
     lightboxZoomRef.current = 1;
     lightboxPanRef.current = { x: 0, y: 0 };
-    setWheelZoomActive(false);
     // Always show the loading state for a newly selected slide, including
     // cached images. The image's load/complete path will dismiss the
     // skeleton once this specific slide is ready; this prevents a cached
@@ -1165,7 +1161,6 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         setLightboxPan({ x: 0, y: 0 });
         lightboxZoomRef.current = 1;
         lightboxPanRef.current = { x: 0, y: 0 };
-        setWheelZoomActive(false);
       } else {
         // Currently at 1x → zoom IN to 1.8x centered on the tap point.
         // 1.8x is a satisfying "camera lens" zoom level — enough to
@@ -1207,49 +1202,18 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
           setLightboxPan({ x: panX, y: panY });
           lightboxZoomRef.current = zoomNew;
           lightboxPanRef.current = { x: panX, y: panY };
-          setWheelZoomActive(true);
         } else {
           // Fallback: zoom to 1.8x centered (no tap-point compensation)
           setLightboxZoom(zoomNew);
           setLightboxPan({ x: 0, y: 0 });
           lightboxZoomRef.current = zoomNew;
           lightboxPanRef.current = { x: 0, y: 0 };
-          setWheelZoomActive(true);
         }
       }
     } else {
       lastTapRef.current = now;
     }
   }, []);
-
-  // Desktop trackpad/mouse-wheel zoom, anchored at the pointer position.
-  const onZoomWheel = React.useCallback((e: React.WheelEvent<HTMLImageElement>) => {
-    // Let the containing tall-image frame consume the wheel while zoom is
-    // inactive. This keeps ordinary desktop scrolling from changing zoom.
-    if (!wheelZoomActive) return;
-    if (e.deltaY === 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const img = e.currentTarget;
-    const container = img.parentElement;
-    if (!container) return;
-    const oldZoom = lightboxZoomRef.current;
-    const nextZoom = Math.max(1, Math.min(5, oldZoom * Math.pow(0.92, e.deltaY / 100)));
-    if (nextZoom === oldZoom) return;
-    const rect = img.getBoundingClientRect();
-    const ratio = nextZoom / oldZoom;
-    const pointerX = e.clientX - (rect.left + rect.width / 2);
-    const pointerY = e.clientY - (rect.top + rect.height / 2);
-    const currentPan = lightboxPanRef.current;
-    const pan = nextZoom === 1
-      ? { x: 0, y: 0 }
-      : { x: currentPan.x + pointerX * (1 - ratio), y: currentPan.y + pointerY * (1 - ratio) };
-    lightboxZoomRef.current = nextZoom;
-    lightboxPanRef.current = pan;
-    setLightboxZoom(nextZoom);
-    setLightboxPan(pan);
-    if (nextZoom === 1) setWheelZoomActive(false);
-  }, [wheelZoomActive]);
 
   // Keyboard nav inside lightbox
   // ── RTL-aware arrow direction ──
@@ -2292,22 +2256,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             above). */}
                         <div
                           ref={lightboxScrollFrameRef}
-                          onWheel={(e) => {
-                            // At 1x, the image itself must remain a normal
-                            // vertical wheel-scroll region. The image wheel
-                            // handler intentionally returns in this state,
-                            // so handle the scroll explicitly here and keep
-                            // it contained inside the frame.
-                            if (!wheelZoomActive && e.deltaY !== 0) {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              // Native wheel deltas can feel too conservative
-                              // for very tall screenshots. Apply a modest
-                              // multiplier while keeping the movement smooth
-                              // and fully contained in this frame.
-                              e.currentTarget.scrollTop += e.deltaY * 2;
-                            }
-                          }}
+                          // Keep the browser's native wheel scrolling inside
+                          // this frame. Stopping propagation prevents the
+                          // lightbox/Body from receiving the event, while
+                          // intentionally preserving the browser default.
+                          onWheel={(e) => e.stopPropagation()}
                           onScroll={(e) => {
                             // Only dismiss the hint when the user has
                             // scrolled MORE than 5px. This 5px threshold
@@ -2461,7 +2414,6 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             onPointerUp={onZoomPointerUp}
                             onPointerCancel={onZoomPointerUp}
                             onClick={onZoomDoubleTap}
-                            onWheel={onZoomWheel}
                             onLoad={() => {
                                loadedLightboxSourcesRef.current.add(lightboxImg.src);
                                setLightboxImgLoaded(true);
@@ -2655,7 +2607,6 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           onPointerUp={onZoomPointerUp}
                           onPointerCancel={onZoomPointerUp}
                           onClick={onZoomDoubleTap}
-                          onWheel={onZoomWheel}
                           onLoad={() => {
                             loadedLightboxSourcesRef.current.add(lightboxImg.src);
                             setLightboxImgLoaded(true);
@@ -2723,7 +2674,6 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         onPointerUp={onZoomPointerUp}
                         onPointerCancel={onZoomPointerUp}
                         onClick={onZoomDoubleTap}
-                        onWheel={onZoomWheel}
                         onLoad={() => {
                           loadedLightboxSourcesRef.current.add(lightboxImg.src);
                           setLightboxImgLoaded(true);
