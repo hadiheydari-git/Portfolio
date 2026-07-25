@@ -289,6 +289,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   // touch-action: none on the <img> tells the browser NOT to handle any
   // touch gesture natively, so JS receives all pointer events.
   const [lightboxZoom, setLightboxZoom] = React.useState(1);
+  // Desktop wheel zoom is intentionally opt-in: it becomes active only
+  // after a double-click zoom-in and is disabled again at 1x.
+  const [wheelZoomActive, setWheelZoomActive] = React.useState(false);
   const [lightboxPan, setLightboxPan] = React.useState({ x: 0, y: 0 });
   const zoomPointersRef = React.useRef<Map<number, { x: number; y: number }>>(new Map());
   // ── Pinch gesture start state ──
@@ -636,6 +639,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   //    actively moving the mouse over the new image.
   React.useEffect(() => {
     const src = lightboxImg?.src;
+    // A new slide always starts at its natural scale and requires a fresh
+    // double-click before the mouse wheel can zoom it.
+    setLightboxZoom(1);
+    setLightboxPan({ x: 0, y: 0 });
+    lightboxZoomRef.current = 1;
+    lightboxPanRef.current = { x: 0, y: 0 };
+    setWheelZoomActive(false);
     setLightboxImgLoaded(Boolean(src && loadedLightboxSourcesRef.current.has(src)));
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
@@ -1152,6 +1162,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         setLightboxPan({ x: 0, y: 0 });
         lightboxZoomRef.current = 1;
         lightboxPanRef.current = { x: 0, y: 0 };
+        setWheelZoomActive(false);
       } else {
         // Currently at 1x → zoom IN to 1.8x centered on the tap point.
         // 1.8x is a satisfying "camera lens" zoom level — enough to
@@ -1193,12 +1204,14 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
           setLightboxPan({ x: panX, y: panY });
           lightboxZoomRef.current = zoomNew;
           lightboxPanRef.current = { x: panX, y: panY };
+          setWheelZoomActive(true);
         } else {
           // Fallback: zoom to 1.8x centered (no tap-point compensation)
           setLightboxZoom(zoomNew);
           setLightboxPan({ x: 0, y: 0 });
           lightboxZoomRef.current = zoomNew;
           lightboxPanRef.current = { x: 0, y: 0 };
+          setWheelZoomActive(true);
         }
       }
     } else {
@@ -1208,6 +1221,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
 
   // Desktop trackpad/mouse-wheel zoom, anchored at the pointer position.
   const onZoomWheel = React.useCallback((e: React.WheelEvent<HTMLImageElement>) => {
+    // Let the containing tall-image frame consume the wheel while zoom is
+    // inactive. This keeps ordinary desktop scrolling from changing zoom.
+    if (!wheelZoomActive) return;
     if (e.deltaY === 0) return;
     e.preventDefault();
     e.stopPropagation();
@@ -1229,7 +1245,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     lightboxPanRef.current = pan;
     setLightboxZoom(nextZoom);
     setLightboxPan(pan);
-  }, []);
+    if (nextZoom === 1) setWheelZoomActive(false);
+  }, [wheelZoomActive]);
 
   // Keyboard nav inside lightbox
   // ── RTL-aware arrow direction ──
@@ -1979,7 +1996,10 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   // The overlay's `pan-y` only applies to touches on the
                   // overlay background (outside the image). Touches on the
                   // image use the image's `touch-action: none`.
-                  "fixed inset-0 z-[200] flex h-[100dvh] min-h-[100dvh] flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-y-auto scroll-smooth overscroll-contain scrollbar-none bg-black/50 backdrop-blur-md",
+                  // The overlay itself must never scroll. Tall images expose
+                  // their own scroll container below; short images remain
+                  // completely fixed in the viewport.
+                  "fixed inset-0 z-[200] flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-hidden overscroll-none scrollbar-none bg-black/50 backdrop-blur-md",
                   "max-sm:[touch-action:pan-y]"
                 )}
               // Stop wheel events from bubbling up to the document, where
@@ -1987,7 +2007,14 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
               // them with a non-passive listener and calls preventDefault().
               // Without this stopPropagation, the wheel event reaches the
               // document handler which kills the native scroll on this overlay.
-              onWheelCapture={stopPropagation}
+              onWheelCapture={(e) => {
+                // Only isolate the wheel while it is being used for zoom.
+                // When inactive, allow the tall-image frame to receive the
+                // event and perform its normal vertical scroll.
+                if (wheelZoomActive && imageWrapperRef.current?.contains(e.target as Node)) {
+                  e.stopPropagation();
+                }
+              }}
               // Same for touchmove — `react-remove-scroll` also captures
               // touchmove at the document level and preventDefaults it for
               // any element not inside the modal's scroll lock group.
@@ -2711,7 +2738,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     between the image and the capsule comes entirely from
                     the wrapper's top padding. This keeps the gap at exactly
                     20px (the safe-area padding doubles as the visual gap). */}
-                {lightboxTotal > 1 && lightboxReady && (
+                {lightboxTotal > 1 && (
                   <div
                     // ── Capsule wrapper (UNIFIED gap, mobile-tighter bottom) ──
                     // `mt-0` + `p-5` keeps a 20px safe-area around the capsule
@@ -2754,6 +2781,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         "back/previous" is to the right, "forward/next" is to
                         the left. The chevron icon always points in the
                         direction the user is conceptually moving. */}
+                    {lightboxReady ? (
                     <div dir="ltr" className="flex w-64 items-center justify-between rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm max-sm:h-12 max-sm:py-0">
                       <button
                         type="button"
@@ -2819,6 +2847,12 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         <ChevronRight className="h-6 w-6" />
                       </button>
                     </div>
+                    ) : (
+                      <div
+                        className="skeleton-shimmer h-[58px] w-64 rounded-full border border-white/10 max-sm:h-12"
+                        aria-label="Loading image controls"
+                      />
+                    )}
                   </div>
                 )}
               </div>
