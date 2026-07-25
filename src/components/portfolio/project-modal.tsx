@@ -231,6 +231,10 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   // loading. Reset to false whenever the displayed image changes so
   // the skeleton placeholder shows/hides correctly (per-image).
   const [lightboxImgLoaded, setLightboxImgLoaded] = React.useState(false);
+  // Keep loaded state per source for the lifetime of this modal instance.
+  // Navigating away and back must reuse the already decoded image instead of
+  // showing the skeleton and restarting the visual load transition.
+  const loadedLightboxSourcesRef = React.useRef<Set<string>>(new Set());
   // True once ANY image has loaded in the current lightbox session.
   // Unlike `lightboxImgLoaded`, this does NOT reset when the user
   // navigates between slides — it stays true for the entire session
@@ -631,9 +635,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   //    previous image doesn't fire and hide the X while the user is
   //    actively moving the mouse over the new image.
   React.useEffect(() => {
-    requestAnimationFrame(() => {
-      setLightboxImgLoaded(false);
-    });
+    const src = lightboxImg?.src;
+    setLightboxImgLoaded(Boolean(src && loadedLightboxSourcesRef.current.has(src)));
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
     }
@@ -1203,6 +1206,31 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     }
   }, []);
 
+  // Desktop trackpad/mouse-wheel zoom, anchored at the pointer position.
+  const onZoomWheel = React.useCallback((e: React.WheelEvent<HTMLImageElement>) => {
+    if (e.deltaY === 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const img = e.currentTarget;
+    const container = img.parentElement;
+    if (!container) return;
+    const oldZoom = lightboxZoomRef.current;
+    const nextZoom = Math.max(1, Math.min(5, oldZoom * Math.pow(0.92, e.deltaY / 100)));
+    if (nextZoom === oldZoom) return;
+    const rect = img.getBoundingClientRect();
+    const ratio = nextZoom / oldZoom;
+    const pointerX = e.clientX - (rect.left + rect.width / 2);
+    const pointerY = e.clientY - (rect.top + rect.height / 2);
+    const currentPan = lightboxPanRef.current;
+    const pan = nextZoom === 1
+      ? { x: 0, y: 0 }
+      : { x: currentPan.x + pointerX * (1 - ratio), y: currentPan.y + pointerY * (1 - ratio) };
+    lightboxZoomRef.current = nextZoom;
+    lightboxPanRef.current = pan;
+    setLightboxZoom(nextZoom);
+    setLightboxPan(pan);
+  }, []);
+
   // Keyboard nav inside lightbox
   // ── RTL-aware arrow direction ──
   // In LTR (English): ArrowLeft → previous, ArrowRight → next (forward = right)
@@ -1350,22 +1378,20 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
               <motion.div
                 key={modalOpenKey}
                 initial={{ opacity: 0, y: 16 }}
-                // GATE the panel entrance on `coverMediaReady` so the panel
-                // (with its shadow-2xl + bg-background) NEVER appears before
-                // the cover image has loaded. Previously the panel entered
-                // immediately while the cover sat at opacity:0 + brightness:0.3
-                // — producing an empty rectangle with a shadow ("page with a
-                // shadow, no image") until the image loaded. Now the panel
-                // stays at opacity:0 + y:16 until coverMediaReady flips to
-                // true, then it animates in simultaneously with the cover's
-                // aperture reveal.
+                // Do not gate the whole panel on the cover image. Cover files
+                // are much larger for some projects (especially the store),
+                // and waiting for an image callback before mounting the panel
+                // makes the modal look broken or unresponsive on a slow/cache
+                // miss. The cover itself still has its own reveal gate below;
+                // the panel can open immediately and show its background while
+                // the cover is loading.
                 //
                 // The backdrop overlay still fades in immediately (separate
                 // motion.div above), so the user sees the screen dim right
                 // away and knows something is loading.
                 animate={{
-                  opacity: coverMediaReady ? 1 : 0,
-                  y: coverMediaReady ? 0 : 16,
+                  opacity: 1,
+                  y: 0,
                 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
@@ -1953,7 +1979,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   // The overlay's `pan-y` only applies to touches on the
                   // overlay background (outside the image). Touches on the
                   // image use the image's `touch-action: none`.
-                  "fixed inset-0 z-[200] flex flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-y-auto overscroll-contain scrollbar-none bg-black/50 backdrop-blur-md",
+                  "fixed inset-0 z-[200] flex h-[100dvh] min-h-[100dvh] flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-y-auto scroll-smooth overscroll-contain scrollbar-none bg-black/50 backdrop-blur-md",
                   "max-sm:[touch-action:pan-y]"
                 )}
               // Stop wheel events from bubbling up to the document, where
@@ -2057,7 +2083,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                          the skeleton shorter than `calc(100vh-142px)` — but
                          it's still a 9:16 portrait rectangle, centered. */
                       <div
-                        className="skeleton-shimmer rounded-2xl h-[calc(100vh-142px)] max-sm:h-[calc(100vh-112px)] w-auto aspect-[9/16] max-w-[calc(100vw-4rem)] sm:max-w-[calc(100vw-8rem)]"
+                        className="skeleton-shimmer rounded-2xl h-[calc(100vh-142px)] max-sm:h-[calc(100vh-112px)] w-auto max-w-[calc(100vw-4rem)] sm:max-w-[calc(100vw-8rem)]"
+                        style={{ aspectRatio: lightboxImg.aspectRatio ?? 0.46 }}
                         aria-hidden="true"
                       />
                     ))}
@@ -2263,7 +2290,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             overflowAnchor: "none",
                           }}
                           className={cn(
-                            "absolute inset-0 overflow-y-auto overscroll-contain scrollbar-none",
+                            "absolute inset-0 overflow-y-auto scroll-smooth overscroll-contain scrollbar-none",
                             // `touch-action: pan-y` on the scroll frame allows
                             // vertical scrolling (for the tall image when
                             // zoom=1) but blocks native pinch-zoom — the
@@ -2388,12 +2415,15 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             onPointerUp={onZoomPointerUp}
                             onPointerCancel={onZoomPointerUp}
                             onClick={onZoomDoubleTap}
+                            onWheel={onZoomWheel}
                             onLoad={() => {
-                              setLightboxImgLoaded(true);
+                               loadedLightboxSourcesRef.current.add(lightboxImg.src);
+                               setLightboxImgLoaded(true);
                               setLightboxReady(true);
                             }}
                             onError={() => {
-                              setLightboxImgLoaded(true);
+                               loadedLightboxSourcesRef.current.add(lightboxImg.src);
+                               setLightboxImgLoaded(true);
                               setLightboxReady(true);
                             }}
                           />
@@ -2579,11 +2609,14 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           onPointerUp={onZoomPointerUp}
                           onPointerCancel={onZoomPointerUp}
                           onClick={onZoomDoubleTap}
+                          onWheel={onZoomWheel}
                           onLoad={() => {
+                            loadedLightboxSourcesRef.current.add(lightboxImg.src);
                             setLightboxImgLoaded(true);
                             setLightboxReady(true);
                           }}
                           onError={() => {
+                            loadedLightboxSourcesRef.current.add(lightboxImg.src);
                             setLightboxImgLoaded(true);
                             setLightboxReady(true);
                           }}
@@ -2644,11 +2677,14 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         onPointerUp={onZoomPointerUp}
                         onPointerCancel={onZoomPointerUp}
                         onClick={onZoomDoubleTap}
+                        onWheel={onZoomWheel}
                         onLoad={() => {
+                          loadedLightboxSourcesRef.current.add(lightboxImg.src);
                           setLightboxImgLoaded(true);
                           setLightboxReady(true);
                         }}
                         onError={() => {
+                          loadedLightboxSourcesRef.current.add(lightboxImg.src);
                           setLightboxImgLoaded(true);
                           setLightboxReady(true);
                         }}
