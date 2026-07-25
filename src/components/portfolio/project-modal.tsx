@@ -638,7 +638,6 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   //    previous image doesn't fire and hide the X while the user is
   //    actively moving the mouse over the new image.
   React.useEffect(() => {
-    const src = lightboxImg?.src;
     // A new slide always starts at its natural scale and requires a fresh
     // double-click before the mouse wheel can zoom it.
     setLightboxZoom(1);
@@ -646,7 +645,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     lightboxZoomRef.current = 1;
     lightboxPanRef.current = { x: 0, y: 0 };
     setWheelZoomActive(false);
-    setLightboxImgLoaded(Boolean(src && loadedLightboxSourcesRef.current.has(src)));
+    // Always show the loading state for a newly selected slide, including
+    // cached images. The image's load/complete path will dismiss the
+    // skeleton once this specific slide is ready; this prevents a cached
+    // slide from appearing instantly and causing a layout shift.
+    setLightboxImgLoaded(false);
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
     }
@@ -2298,7 +2301,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             if (!wheelZoomActive && e.deltaY !== 0) {
                               e.preventDefault();
                               e.stopPropagation();
-                              e.currentTarget.scrollTop += e.deltaY;
+                              // Native wheel deltas can feel too conservative
+                              // for very tall screenshots. Apply a modest
+                              // multiplier while keeping the movement smooth
+                              // and fully contained in this frame.
+                              e.currentTarget.scrollTop += e.deltaY * 2;
                             }
                           }}
                           onScroll={(e) => {
