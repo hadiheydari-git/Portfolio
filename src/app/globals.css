@@ -529,28 +529,6 @@
 }
 
 /* ========================================================================
-   LOADING STATE — hide scrollbar + disable scrolling during the black
-   splash screen (LoadingOverlay).
-   The `is-loading` class is set on <html> via SSR (layout.tsx) so the
-   very first paint already locks scrolling + hides the scrollbar — no
-   flash of a scrollable black screen. <LoadingOverlay /> removes the
-   class once `isReady` flips, restoring normal scrolling.
-   ====================================================================== */
-html.is-loading,
-html.is-loading body {
-  overflow: hidden !important;
-  height: 100% !important;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-}
-html.is-loading::-webkit-scrollbar,
-html.is-loading body::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
-/* ========================================================================
    SCROLLBAR THEME COLORS
    ------------------------------------------------------------------------
    Only colors are themed — width and shape stay at the browser default.

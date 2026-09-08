@@ -81,8 +81,6 @@ export function Header() {
               src="/hadi-heydari-profile.webp"
               alt="Hadi Heydari"
               className="h-full w-full"
-              critical
-              criticalKey="header:avatar"
             />
           </span>
           <span className="hidden text-sm font-medium tracking-tight sm:block">
@@ -117,7 +115,7 @@ export function Header() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={toggleLocale}
-            className="flex h-9 items-center gap-1.5 rounded-full border border-black/10 px-3 text-xs font-medium text-foreground transition-all duration-300 hover:bg-secondary hover:shadow-card dark:border-white/10"
+            className="relative flex h-9 items-center gap-1.5 rounded-full border border-black/10 px-3 text-xs font-medium text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card dark:border-white/10"
             aria-label={t("common.language")}
           >
             <Languages className="h-3.5 w-3.5" />
@@ -142,7 +140,7 @@ export function Header() {
                   : e
               );
             }}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 hover:bg-secondary hover:shadow-card dark:border-white/10"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card dark:border-white/10"
             aria-label={t("common.theme")}
           >
             <AnimatePresence mode="wait" initial={false}>
@@ -173,8 +171,8 @@ export function Header() {
           {/* Mobile menu trigger */}
           <button
             onClick={() => setMobileOpen((p) => !p)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 hover:bg-secondary md:hidden dark:border-white/10"
-            aria-label="Menu"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card md:hidden dark:border-white/10"
+              aria-label={locale === "fa" ? "منو" : "Menu"}
           >
             {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>

@@ -8,36 +8,24 @@ import { Experience } from "@/components/sections/experience";
 import { Portfolio } from "@/components/sections/portfolio";
 import { Skills } from "@/components/sections/skills";
 import { Contact } from "@/components/sections/contact";
-import { LoadingGateProvider } from "@/hooks/use-asset-queue";
-import { useCriticalAssets } from "@/hooks/use-critical-assets";
 
 /**
- * Client-side page shell.
- *
- * 1. LoadingGateProvider receives critical keys + gallery URLs.
- * 2. LoadingOverlay renders a full-screen barrier (z-[9999]).
- * 3. PageContent is `visibility: hidden` until all critical images report.
- * 4. When isReady flips:
- *    a. PageContent becomes visibility:visible (instant, zero CLS).
- *    b. LoadingOverlay fades out via CSS transition (500ms).
- *    c. SectionReveal observers start (animations play during fade).
- * 5. Gallery images pre-fetch silently in the background (requestIdleCallback).
+ * Client-side page shell. Content stays available for the initial render;
+ * viewport reveals coordinate their own motion without a page-wide gate.
+ * Targets Lighthouse LCP/FCP and avoids delaying assistive technology.
  */
 export function HomePageClient() {
-  const { criticalKeys, galleryUrls } = useCriticalAssets();
   return (
-    <LoadingGateProvider criticalKeys={criticalKeys} galleryUrls={galleryUrls}>
-      <div id="top" className="flex min-h-screen flex-col">
-        <Header />
-        <main className="flex-1">
-          <Hero />
-          <Portfolio />
-          <Experience />
-          <Skills />
-          <Contact />
-        </main>
-        <Footer />
-      </div>
-    </LoadingGateProvider>
+    <div id="top" className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1">
+        <Hero />
+        <Portfolio />
+        <Experience />
+        <Skills />
+        <Contact />
+      </main>
+      <Footer />
+    </div>
   );
 }

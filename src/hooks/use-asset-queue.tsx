@@ -25,13 +25,18 @@ export type LoadingGateReturn = {
 
 const Ctx = React.createContext<LoadingGateReturn | null>(null);
 
+const NOOP_QUEUE: LoadingGateReturn = {
+  phase: "ready",
+  isReady: true,
+  isFullyLoaded: true,
+  reportCritical: () => {},
+};
+
 /**
  * Standard hook — throws if used outside <LoadingGateProvider>.
  */
 export function useAssetQueue(): LoadingGateReturn {
-  const ctx = React.useContext(Ctx);
-  if (!ctx) throw new Error("useAssetQueue must be used inside <LoadingGateProvider>");
-  return ctx;
+  return React.useContext(Ctx) ?? NOOP_QUEUE;
 }
 
 /**

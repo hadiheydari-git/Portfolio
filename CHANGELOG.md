@@ -7,3 +7,7 @@
 - `src/app/layout.tsx` — added `metadataBase`, canonical URL, and absolute Open Graph URL/image metadata. Targets Lighthouse SEO metadata and social preview audits.
 
 Validation: `npm run build` passes and `/` remains statically prerendered. Lighthouse before/after was not run locally.
+
+- `src/components/page/home-page-client.tsx`, `src/hooks/use-asset-queue.tsx` — removed the unused page-wide loading gate and made image queue access optional. Targets Lighthouse LCP, FCP, and mobile accessibility; production build still statically prerenders `/`.
+- `src/components/layout/header.tsx` — removed high-priority loading from the below-LCP avatar and added invisible hit slop/localized menu naming. Targets Lighthouse LCP network contention and mobile tap-target/accessibility audits without changing visible dimensions.
+- `package.json`, `package-lock.json` — removed unused admin/editor/data/UI dependencies; no admin route exists in this deployment. Targets Lighthouse JavaScript execution, TBT, and desktop Performance.
