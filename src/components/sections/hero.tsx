@@ -60,7 +60,9 @@ export function Hero() {
           <div className="h-full w-full overflow-hidden rounded-[2rem] border border-black/10 shadow-lifted sm:rounded-[2.5rem]">
             <SmartImage
               src="/hadi-heydari-headshot.webp"
-              alt={tt(profile.name)}
+              alt={tt({ fa: "هادی حیدری، طراح محصول", en: "Hadi Heydari, Product Designer" })}
+              width={1200}
+              height={1200}
               className="h-full w-full"
               critical
               criticalKey="hero:headshot"
@@ -83,11 +85,10 @@ export function Hero() {
           <RevealItem className="flex flex-col gap-3">
             <h1 className="text-balance text-4xl font-extrabold tracking-tight md:text-5xl lg:text-6xl xl:text-7xl">
               <span className="text-foreground dark:text-white">{tt(profile.name)}</span>
+              <span className="block text-base font-medium tracking-tight text-muted-foreground md:text-lg lg:text-2xl">
+                {tt(profile.role)}
+              </span>
             </h1>
-
-            <p className="text-base font-medium tracking-tight text-muted-foreground md:text-lg lg:text-2xl">
-              {t("hero.title")}
-            </p>
           </RevealItem>
 
           {/* About Me integrated directly into the hero */}

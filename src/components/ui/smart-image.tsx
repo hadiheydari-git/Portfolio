@@ -7,6 +7,8 @@ import { useAssetQueue } from "@/hooks/use-asset-queue";
 type Props = {
   src: string;
   alt: string;
+  width?: number;
+  height?: number;
   className?: string;
   gradientClassName?: string;
   imgClassName?: string;
@@ -71,6 +73,8 @@ type Props = {
 export const SmartImage = React.memo(function SmartImage({
   src,
   alt,
+  width,
+  height,
   className,
   gradientClassName,
   imgClassName,
@@ -175,6 +179,8 @@ export const SmartImage = React.memo(function SmartImage({
         ref={imgRef}
         src={encodedSrc}
         alt={alt}
+        width={width}
+        height={height}
         loading={critical ? "eager" : "lazy"}
         onLoad={handleLoad}
         onError={handleError}
