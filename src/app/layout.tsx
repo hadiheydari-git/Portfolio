@@ -38,6 +38,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://hadiheydari.ir"),
   // Default SSR title = Persian (the default language). Updates
   // dynamically to English when the user switches language (see
   // LanguageProvider's document.title sync on locale change).
@@ -70,7 +71,10 @@ export const metadata: Metadata = {
     description:
       "Portfolio of Hadi Heydari, a Product Designer crafting innovative digital products",
     type: "website",
+    url: "https://hadiheydari.ir/",
+    images: [{ url: "/hadi-heydari-profile.webp", width: 1200, height: 630, alt: "Hadi Heydari" }],
   },
+  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({
@@ -79,16 +83,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fa" dir="rtl" className="is-loading" suppressHydrationWarning>
+    <html lang="fa" dir="rtl" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         {/* Critical images — preloaded before JS hydrates for fastest LCP */}
-        <link rel="preload" as="image" href="/hadi-heydari-profile.webp" />
+        {/* Lighthouse LCP: only the above-the-fold hero portrait is preloaded. */}
         <link rel="preload" as="image" href="/hadi-heydari-headshot.webp" />
-        <link rel="preload" as="image" href="/images/Dotaar%20Dashboard/Thumbnail.webp" />
-        <link rel="preload" as="image" href="/images/Dotaar%20Store/Thumbnail.webp" />
-        <link rel="preload" as="image" href="/images/Dev%20Solutions/Thumbnail.webp" />
-        <link rel="preload" as="image" href="/images/Mafia%20Master/Thumbnail.webp" />
       </head>
       <body
         className={`${vazirmatn.variable} ${inter.variable} antialiased bg-background text-foreground`}

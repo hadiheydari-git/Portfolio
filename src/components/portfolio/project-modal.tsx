@@ -19,49 +19,18 @@ function encodeSrc(src: string): string {
   return encodeURI(src).replace(/&/g, "%26");
 }
 
-/** Build a Next.js Image Optimization URL for a heavy source image.
- *
- *  WHY THIS EXISTS — Dev Solutions gallery images 1 and 3 are extremely
- *  heavy (5760×13820 = 1.5MB, and 5760×8012 = 775KB). A plain <img>
- *  forces the browser to:
- *    1. Download the full 1.5MB / 775KB payload.
- *    2. Allocate a decoded bitmap at native resolution (~320MB for the
- *       5760×13820 image!) before it can be downscaled for display.
- *    3. Decode that bitmap on the main thread, blocking the gallery's
- *       fade-in animation and causing the modal to feel janky / stuck.
- *
- *  Using `/_next/image?url=...&w=...&q=...` makes the server return a
- *  pre-resized + recompressed variant. At w=640 the 1.5MB image becomes
- *  ~80KB and the decoded bitmap is ~4MB instead of ~320MB — decode time
- *  drops from hundreds of ms to ~10ms. No visual difference in the
- *  lightbox (the displayed image is also ~640-800px wide) but a huge
- *  performance win.
- *
- *  PARAMETERS:
- *  - `w` (width): the maximum display width. For the tall-image scroll
- *    frame, the inner <img> is rendered at w-full of a frame whose
- *    width is constrained by `max-w-[calc(100vw-3rem)]`. On a typical
- *    desktop that's ~700-900px. w=828 gives a comfortable retina-quality
- *    variant. For the standard landscape branch, w=1920 covers full-HD.
- *  - `q` (quality): 80 — same as bento-card covers.
- *
- *  URL ENCODING: Next.js's image optimizer requires the `url` query
- *  parameter to be URL-encoded (so `/images/Dev Solutions/...` becomes
- *  `%2Fimages%2FDev%20Solutions%2F...`). We use encodeURIComponent on
- *  the already-encoded path so spaces, ampersands, and slashes are
- *  properly escaped in the query string.
- */
+/** Build a Next.js Image Optimization URL (/_next/image) for heavy source
+ *  images (e.g. Dev Solutions' 1.5MB 5760×13820 screenshots) — the server
+ *  returns a pre-resized + recompressed variant instead of the raw file.
+ *  Widths: w=640 for gallery thumbnails, w=1920 for full-HD lightbox;
+ *  q=80 like bento covers. `url` must be URL-encoded for the optimizer. */
 function optimizedSrc(src: string, width: number, quality: number = 80): string {
   const encoded = encodeURIComponent(encodeSrc(src));
   return `/_next/image?url=${encoded}&w=${width}&q=${quality}`;
 }
 
-/* Stable no-op stopPropagation handler — used as `onWheelCapture` and
- * `onTouchMoveCapture` on the lightbox overlay. Defining it ONCE at
- * module scope (rather than as an inline arrow function in JSX) means
- * React's reconciler sees the SAME function reference on every render
- * and skips re-attaching the DOM event listener. Tiny win per render,
- * but during pinch-zoom (hundreds of re-renders per second) it adds up. */
+/* Stable no-op stopPropagation handler — module-scope so React sees the
+ * same reference every render and skips re-attaching the DOM listener. */
 const stopPropagation = (e: React.SyntheticEvent) => {
   e.stopPropagation();
 };
@@ -80,21 +49,11 @@ const CATEGORY_ORDER: ToolCategory[] = [
   "management",
 ];
 
-/* ── Gallery batch size (module-level constant) ───────────────────────
-   Promoted to module scope so the value is stable across renders.
-   Previously lived inside the component body, which created a fresh
-   const on every render and made the batch-advancement effect's
-   dependency array look like it depended on a non-stable value.
-   The effect itself already excluded it via the array, but lifting
-   it removes any ambiguity for future maintainers and lets the
-   compiler treat it as a true constant. */
+/* ── Gallery batch size ── module-level so the value is stable across renders. */
 const GALLERY_BATCH_SIZE = 3;
 
-/* ── Modal content stagger animation ──────────────────────────────────
-   The modal container scales+fades in (handled below). Inside, each
-   section (header, overview, role, tools, gallery) fades up one by
-   one with a 80ms stagger, starting 250ms after the container settles.
-   This creates a smooth, progressive "content builds up" feel. */
+/* ── Modal content stagger ── sections fade up one by one with an 80ms
+   stagger, 250ms after the container settles. */
 
 const containerVariants: Variants = {
   hidden: { opacity: 1 },
@@ -116,9 +75,7 @@ const itemVariants: Variants = {
   },
 };
 
-/* ── Cover aperture reveal ───────────────────────────────────────────
-   Thumbnail enters with a camera-lens "aperture" feel: blurred, dimmed,
-   and slightly zoomed, then sharpens to full clarity. */
+/* ── Cover aperture reveal ── */
 
 const coverMediaVariants: Variants = {
   hidden: {
@@ -138,13 +95,8 @@ const coverMediaVariants: Variants = {
   },
 };
 
-// Post-reveal variant — used after the aperture animation completes.
-// Explicitly sets `filter: "none"` (NOT omitted) because framer-motion
-// does NOT clear properties that are absent from the new variant — it keeps
-// the last animated value. So we must explicitly override `filter` to "none"
-// to disable the filter pipeline (which otherwise stays active as
-// `blur(0px) brightness(1)` and can render with a hair of softness on some
-// Chromium versions). Also drops `scale` to avoid a persistent transform.
+// Post-reveal variant — framer-motion does NOT clear properties absent
+// from a new variant, so `filter: "none"` must be set explicitly.
 const coverMediaVariantsDone: Variants = {
   hidden: { opacity: 1, scale: 1, filter: "none" },
   show: { opacity: 1, scale: 1, filter: "none" },
@@ -161,9 +113,7 @@ const coverMediaVariantsReduced: Variants = {
 export function ProjectModal({ project, open, onOpenChange }: Props) {
   const { t, tt, locale } = useLanguage();
   const prefersReducedMotion = useReducedMotion();
-  // Controls when the interior staggered content should begin animating.
-  // We wait for the container's entrance animation to finish so child
-  // content (especially images) does not participate in the open.
+  // Wait for the container entrance to finish before animating children.
   const [contentAnimate, setContentAnimate] = React.useState(
     () => prefersReducedMotion
   );
@@ -172,34 +122,19 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   );
   const [portalReady, setPortalReady] = React.useState(false);
   const [modalOpenKey, setModalOpenKey] = React.useState(0);
-  // When true, the cover aperture reveal has finished and we strip the
-  // `filter: blur(0px) brightness(1)` from the cover motion.div. Framer-motion
-  // re-applies variant values on re-render, so we can't just imperatively
-  // clear the inline style — instead we swap to a variant without `filter`
-  // once the animation is done, letting the browser render the cover at
-  // full native sharpness.
+  // True after the aperture reveal — swap to a variant with
+  // `filter: "none"` (framer-motion re-applies variant values on re-render).
   const [coverRevealDone, setCoverRevealDone] = React.useState(false);
-  // True once the cover image/video has finished loading. The aperture
-  // reveal animation is GATED on this — without it, on first open the
-  // motion.div animates from blur(24px)→blur(0px) while the image is
-  // still loading, so the user never sees the blur transition; the
-  // image just pops in suddenly once it loads (by which point blur is
-  // already at 0). By waiting for `coverMediaReady`, the aperture
-  // effect runs WITH the image visible, producing the intended
-  // camera-lens reveal on first open AND on cached re-opens.
+  // True once the cover image/video has loaded; the aperture reveal is
+  // gated on this so the blur→sharp transition runs with the image visible.
   const [coverMediaReady, setCoverMediaReady] = React.useState(false);
   const openSequenceRef = React.useRef(0);
-  // Timer ref used to delay starting child animations until after the
-  // container's entrance animation completes (handles slow-first-open).
+  // Timer ref for delaying child animations until the container's
+  // entrance animation completes.
   const parentAnimationTimerRef = React.useRef<number | null>(null);
   const [lightboxImg, setLightboxImg] = React.useState<GalleryImage | null>(null);
-  // ── Derived lightbox values (memoized) ──
-  // `lightboxIndex` is computed via `indexOf` on `project.gallery` (a stable
-  // array reference), so the result is stable across re-renders UNLESS the
-  // displayed image actually changes. Memoizing prevents re-computing on
-  // every state change (e.g. during pinch-zoom, when `lightboxZoom` /
-  // `lightboxPan` update hundreds of times per second).
-  // `lightboxTotal` and `isDevSolutions` are similarly stable per project.
+  // ── Derived lightbox values (memoized) ── stable across re-renders
+  // (e.g. during pinch-zoom state updates) unless the image changes.
   const lightboxIndex = React.useMemo(
     () => lightboxImg && project ? project.gallery.indexOf(lightboxImg) : -1,
     [lightboxImg, project]
@@ -209,132 +144,66 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const imageWrapperRef = React.useRef<HTMLDivElement>(null);
   const hideTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Ref to the modal panel motion.div — used in onAnimationComplete to clear
-  // the post-animation transform + willChange so the browser can demote the
-  // element off its GPU compositor layer. A persistent GPU layer with any
-  // non-`none` transform disables subpixel anti-aliasing for text in Chrome,
-  // producing the "subtle blur" effect users see on modal text.
+  // Ref to the modal panel motion.div — used to clear transform +
+  // willChange after the entrance animation. A persistent GPU layer with
+  // any non-`none` transform disables subpixel anti-aliasing in Chrome.
   const modalPanelRef = React.useRef<HTMLDivElement>(null);
-  // Tracks the pointer-down position on the lightbox overlay so we can
-  // distinguish a real tap (< 8px movement → close) from a touch-drag
-  // (≥ 8px movement → do nothing, let the browser scroll the image).
-  // Also records whether the pointer started INSIDE the image wrapper
-  // — tapping the image itself should never close the lightbox (only
-  // the X button or the overlay background should).
+  // Tracks pointer-down position to distinguish a real tap (< 8px → close)
+  // from a drag, and whether the pointer started inside the image wrapper
+  // (tapping the image never closes the lightbox).
   const pointerDownRef = React.useRef<{
     x: number;
     y: number;
     pointerId: number;
     targetIsImage: boolean;
   } | null>(null);
-  // True once the currently-displayed lightbox image has finished
-  // loading. Reset to false whenever the displayed image changes so
-  // the skeleton placeholder shows/hides correctly (per-image).
+  // True once the currently-displayed lightbox image has finished loading
+  // (reset per image so the skeleton shows/hides correctly).
   const [lightboxImgLoaded, setLightboxImgLoaded] = React.useState(false);
-  // Keep loaded state per source for the lifetime of this modal instance.
-  // Navigating away and back must reuse the already decoded image instead of
-  // showing the skeleton and restarting the visual load transition.
+  // Loaded sources cached for the modal's lifetime (reuse on back-nav).
   const loadedLightboxSourcesRef = React.useRef<Set<string>>(new Set());
-  // True once ANY image has loaded in the current lightbox session.
-  // Unlike `lightboxImgLoaded`, this does NOT reset when the user
-  // navigates between slides — it stays true for the entire session
-  // so the capsule (prev/next/counter) doesn't animate (unmount/remount)
-  // on each slide change. Only resets when the lightbox closes.
+  // True once ANY image has loaded this session; unlike
+  // `lightboxImgLoaded` it does NOT reset per slide, so the capsule
+  // doesn't unmount/remount on each slide change.
   const [lightboxReady, setLightboxReady] = React.useState(false);
-  // Controls X-button visibility on desktop. True ONLY while the mouse
-  // is actively moving over the image; auto-set to false after 1s of no
-  // movement. On mobile (hover:none devices) the X is always visible
-  // via a CSS media-query override.
-  // IMPORTANT: this is NOT set to true on slide change — the X must
-  // remain hidden until the user actually moves the mouse over the
-  // new image. Only `onMouseEnter` / `onMouseMove` on the image
-  // wrapper set this to true.
+  // X-button visibility on desktop: shows only while the mouse is moving,
+  // auto-hides after ~2s idle; mobile uses a [@media(hover:none)] override.
   const [isImgHovered, setIsImgHovered] = React.useState(false);
 
-  // ── Tall-image scrollable frame (Dev Solutions images 1 & 3) ──────
-  // These two screenshots are very tall portraits (aspectRatio < 1).
-  // In the lightbox they get a SPECIAL 16:9 "autofill" frame: the image
-  // fills the frame's width, its natural height overflows the frame, and
-  // the user can scroll VERTICALLY inside the frame to pan through the
-  // full screenshot. This is the only place in the lightbox where we
-  // intentionally crop height + enable internal scroll.
-  //
-  // A "scroll" hint (text + chevron-down) slides in at the bottom-center
-  // of the frame 1.5s after the lightbox opens, and slides OUT (downward,
-  // exiting from the bottom of the image) as soon as the user starts
-  // scrolling inside the frame.
+  // ── Tall-image scrollable frame (Dev Solutions images 1 & 3) ──
+  // Tall portraits (aspectRatio < 1) get a 16:9 "autofill" frame: the image
+  // fills the frame width, overflows height, user scrolls vertically.
+  // A "scroll" hint slides in 1.5s after open and out on first scroll.
   const [scrollHintVisible, setScrollHintVisible] = React.useState(false);
   const [scrollAvailable, setScrollAvailable] = React.useState(false);
   const lightboxScrollFrameRef = React.useRef<HTMLDivElement>(null);
   const scrollHintTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Lightbox pinch-zoom + pan (mobile) ──
-  // Custom JS-based pinch-to-zoom and one-finger pan for lightbox images.
-  //
-  // WHY NOT use the browser's native pinch-zoom (touch-action: pinch-zoom)?
-  // Native pinch-zoom creates a "visual viewport" zoom. After zooming, a
-  // one-finger drag is supposed to pan the visual viewport — BUT if there's
-  // a scrollable container (overflow-y-auto) under the touch, the browser
-  // scrolls that container instead of panning the zoomed view. Our lightbox
-  // overlay is overflow-y-auto (for tall images), so native pinch-zoom +
-  // one-finger pan was broken: the user could zoom in with 2 fingers but
-  // couldn't pan around with 1 finger.
-  //
-  // By handling pinch-zoom in JS via Pointer Events, we get full control:
-  //   - 2 fingers: pinch to zoom (1x to 5x), zooms toward pinch center
-  //   - 1 finger (when zoomed > 1x): pan in any direction (2D)
-  //   - 1 finger (when zoom = 1x): normal behavior — for tall images,
-  //     scrolls the frame vertically; for others, does nothing (tap closes)
-  //
-  // touch-action: none on the <img> tells the browser NOT to handle any
-  // touch gesture natively, so JS receives all pointer events.
+  // ── Lightbox pinch-zoom + pan (mobile) ── handled in JS via Pointer
+  // Events because native pinch-zoom's one-finger pan conflicts with the
+  // overlay's overflow-y-auto. 2 fingers: pinch zoom (1x-5x); 1 finger:
+  // pan when zoomed, scroll/tap at 1x. touch-action: none on the <img>.
   const [lightboxZoom, setLightboxZoom] = React.useState(1);
   const [lightboxPan, setLightboxPan] = React.useState({ x: 0, y: 0 });
   const zoomPointersRef = React.useRef<Map<number, { x: number; y: number }>>(new Map());
-  // ── Pinch gesture start state ──
-  // Instead of tracking the PREVIOUS finger distance (per-event ratio,
-  // which amplifies finger wobble into zoom jitter), we track the
-  // distance + zoom level at the MOMENT the 2-finger pinch began.
-  //
-  // Each pointermove then computes: newZoom = startZoom * (curDist / startDist).
-  // This makes zoom a direct function of absolute finger distance, so
-  // micro-wobbles produce proportionally tiny zoom changes (not sudden
-  // reversals). See `onZoomPointerMove` for the full rationale.
+  // ── Pinch gesture start state ── newZoom = startZoom * (curDist /
+  // startDist); the absolute-from-start distance avoids jitter from
+  // finger wobble.
   const pinchStartDistRef = React.useRef<number | null>(null);
   const pinchStartZoomRef = React.useRef<number | null>(null);
   const lastPanPointRef = React.useRef<{ x: number; y: number } | null>(null);
   // Read current zoom in pointer handlers without re-creating callbacks
   const lightboxZoomRef = React.useRef(1);
   React.useEffect(() => { lightboxZoomRef.current = lightboxZoom; }, [lightboxZoom]);
-  // Read current pan in pointer handlers without re-creating callbacks.
-  // Needed for pinch-anchor math: when pinch-zooming, we compute the new
-  // pan from the old pan + the pinch midpoint, so we need the LATEST pan
-  // value synchronously (state may be stale within the same frame).
+  // Read current pan in pointer handlers without re-creating callbacks;
+  // pinch-anchor math needs the latest pan synchronously.
   const lightboxPanRef = React.useRef({ x: 0, y: 0 });
   React.useEffect(() => { lightboxPanRef.current = lightboxPan; }, [lightboxPan]);
 
   // ── Cached image dimensions for clamp math + pinch anchor ──
-  // Stores the image's natural rendered size (offsetWidth/Height), its
-  // container's size, AND the image's natural center in screen coords —
-  // all captured ONCE at the start of each gesture (in
-  // `onZoomPointerDown`). This avoids expensive forced-layout reads on
-  // every pointer-move event, which was the main cause of lag during
-  // rapid pinch-zoom.
-  //
-  // `natCenterX/Y` = the image's center position on screen BEFORE any
-  // transform. This is the anchor point for pinch-zoom: when the user
-  // pinches at midpoint M, the image point under M stays under M as zoom
-  // changes. Computed as:
-  //   natCenter = transformedRectCenter - currentPan
-  // because `transform: translate(pan) scale(zoom)` shifts the natural
-  // center by exactly `pan` (scaling around center doesn't move the
-  // center).
-  //
-  // `offsetWidth/Height` are LAYOUT properties — they reflect the
-  // element's box size BEFORE any CSS transform. Scaling an element
-  // via `transform: scale()` does NOT change its `offsetWidth`, so
-  // these cached values remain valid for the entire gesture regardless
-  // of how much the user zooms.
+  // Captured ONCE at gesture start (avoids forced-layout reads per move).
+  // `natCenterX/Y` = image center before any transform (anchors the pinch
+  // midpoint); `offsetWidth/Height` are pre-transform, valid all gesture.
   const imgDimsRef = React.useRef<{
     imgW: number;
     imgH: number;
@@ -344,33 +213,21 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     natCenterY: number;
   } | null>(null);
 
-  // ── Smooth zoom animation for double-tap ──
-  // When `zoomAnimating` is true, a CSS `transition: transform 0.3s` is
-  // applied to the <img>, so double-tap zoom-in/out animates smoothly
-  // instead of jumping instantly. Set to true by `onZoomDoubleTap`, auto-
-  // reset to false after 350ms (slightly longer than the 300ms transition
-  // to ensure the transition completes before disabling). Also reset to
-  // false immediately if the user starts a manual gesture (pinch/pan) —
-  // see `onZoomPointerDown` for the mid-animation visual-state sync that
-  // prevents jumps when a gesture interrupts an animation.
+  // ── Smooth zoom animation for double-tap ── CSS `transition: transform`
+  // animates the <img> while true; auto-resets after 450ms + buffer and is
+  // cancelled immediately when a manual gesture starts.
   const [zoomAnimating, setZoomAnimating] = React.useState(false);
   const zoomAnimTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const startZoomAnimation = React.useCallback(() => {
     setZoomAnimating(true);
     if (zoomAnimTimerRef.current) clearTimeout(zoomAnimTimerRef.current);
-    // 500ms = 450ms transition + 50ms buffer. The transition must
-    // complete before we remove it, otherwise the transform would jump
-    // mid-animation when `zoomAnimating` flips back to false.
+    // 500ms = 450ms transition + buffer; removing the transition early
+    // would make the transform jump mid-animation.
     zoomAnimTimerRef.current = setTimeout(() => setZoomAnimating(false), 500);
   }, []);
 
-  // ── "Double-tap to reset" hint ──
-  // Shows a small pill at the BOTTOM-center of the lightbox image after
-  // the user has been zoomed in (zoom > 1) for 8 seconds. The 8s delay
-  // gives the user time to explore the zoomed image first, then gently
-  // reminds them they can double-tap to return to 1x. Auto-hides after
-  // 3s. Re-shows (after another 8s delay) if the user zooms in again
-  // after returning to 1x.
+  // ── "Double-tap to reset" hint ── shows 8s after the user zooms in,
+  // auto-hides after 3s; re-shows after another 8s if they zoom again.
   const [zoomResetHintVisible, setZoomResetHintVisible] = React.useState(false);
   const zoomResetHintTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const zoomResetHideTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -411,75 +268,35 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     };
   }, [lightboxZoom]);
 
-  // ── Progressive gallery batch loading ──
-  // Gallery images load in sequential batches of GALLERY_BATCH_SIZE (3),
-  // starting from the top. Batch 1 = images 0-2, Batch 2 = images 3-5, etc.
-  // The next batch does NOT start loading until the current batch's images
-  // have all finished loading (or errored). This limits simultaneous
-  // network requests + image-decode work, keeping the modal snappy on
-  // lower-end devices.
-  //
-  // - `activeBatch` (1-indexed): which batch is currently allowed to load.
-  //   Images in batches < activeBatch are already loaded (stay rendered).
-  //   Images in batch === activeBatch render SmartImage and report load.
-  //   Images in batches > activeBatch render a skeleton placeholder only
-  //   (no <img>, so no network request) until their batch becomes active.
-  // - `loadedInBatchCount`: how many images in the current active batch
-  //   have finished loading. When this reaches the batch's expected size,
-  //   we advance to the next batch and reset the counter.
+  // ── Progressive gallery batch loading ── images load in sequential
+  // batches of 3; the next batch starts only when the current one fully
+  // loads (or errors). `activeBatch` (1-indexed): earlier batches stay
+  // rendered, the active renders SmartImage, later render skeleton only
+  // (no <img> → no network request). `loadedInBatchCount` reaching the
+  // batch size advances the batch.
   const [activeBatch, setActiveBatch] = React.useState(1);
   const [loadedInBatchCount, setLoadedInBatchCount] = React.useState(0);
 
-  // ── Stable gallery batch-loaded callback ──
-  // Each gallery cell (DevSolutionsThumb and SmartImage) gets this SAME
-  // callback reference (via the memoized `makeGalleryOnLoad` factory).
-  // Without memoization, every parent re-render would create a NEW closure
-  // for each cell's onLoad, which would:
-  //   1. Cause React.memo on DevSolutionsThumb to see a new prop and bail
-  //      out of memoization, re-rendering every thumbnail on every parent
-  //      state change (e.g. during pinch-zoom in the lightbox, when the
-  //      parent re-renders hundreds of times per second).
-  //   2. Re-create the <img>'s onLoad handler inside SmartImage, which is
-  //      harmless but wasteful.
-  //
-  // The factory returns a stable callback per (batch, activeBatch) pair.
-  // When `activeBatch` advances, new factory closures are produced — but
-  // only the cells in the new batch change; cells in earlier batches have
-  // already loaded and their onLoad won't fire again anyway.
-  //
-  // IMPORTANT — the closure captures `imageBatch` and `activeBatch` at
-  // creation time. We only count the load if `imageBatch === activeBatch`.
-  // If the parent re-renders with a new `activeBatch`, only the cells in
-  // the new active batch will see a matching condition — exactly the
-  // intended progressive-loading behavior.
+  // ── Stable gallery batch-loaded callback ── stable per-(batch,
+  // activeBatch) to keep React.memo on DevSolutionsThumb effective;
+  // counts the load only when `imageBatch === activeBatch` (via ref).
   const makeGalleryOnLoad = React.useCallback(
     (imageBatch: number) => () => {
-      // Use the functional updater so we don't add `activeBatch` as a dep
-      // — the closure reads the LATEST activeBatch via a ref.
+      // Functional updater; reads the LATEST activeBatch via a ref.
       if (imageBatch === activeBatchRef.current) {
         setLoadedInBatchCount((c) => c + 1);
       }
     },
     []
   );
-  // Mirror `activeBatch` into a ref so the memoized callback above can
-  // read the latest value without being recreated on every batch advance.
-  // Otherwise `makeGalleryOnLoad` would be recreated on every batch change,
-  // defeating the memoization of DevSolutionsThumb.
+  // Mirrors `activeBatch` into a ref for the memoized callback above.
   const activeBatchRef = React.useRef(activeBatch);
   React.useEffect(() => {
     activeBatchRef.current = activeBatch;
   }, [activeBatch]);
 
-  // True when the current lightbox image is a tall Dev Solutions
-  // screenshot (aspectRatio < 1) — i.e. image 1 (0.417) or image 3 (0.719).
-  // These are the ONLY two images that get the 16:9 scrollable frame.
-  //
-  // MEMOIZED — `lightboxImg` is a stable object reference from project.gallery
-  // (same array index returned on each render), so the memoization cache hits
-  // whenever the displayed image hasn't changed. This prevents re-computing
-  // the boolean on every parent re-render (e.g. during pinch-zoom, when
-  // `lightboxZoom` / `lightboxPan` change hundreds of times per second).
+  // True when the lightbox image is a tall Dev Solutions screenshot
+  // (aspectRatio < 1) — the only ones getting the 16:9 scrollable frame.
   const isDevSolutionsTall = React.useMemo(
     () =>
       isDevSolutions &&
@@ -488,15 +305,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     [isDevSolutions, lightboxImg]
   );
 
-  // ── Lightbox navigation callbacks ──
-  // Both rely only on `project.gallery` (a stable array reference from the
-  // project object) and the current `lightboxImg`. Instead of tracking
-  // `lightboxIndex` / `lightboxTotal` (which add reactive deps and force
-  // the callback to be recreated on every slide change), we look up the
-  // current index INSIDE the callback via `indexOf`. This keeps the
-  // callbacks stable across lightbox navigation — preventing downstream
-  // effects (like the keyboard handler below) from re-subscribing on
-  // every arrow press.
+  // ── Lightbox navigation callbacks ── index via `indexOf` inside the
+  // callback keeps them stable so effects don't re-subscribe per slide.
   const lightboxPrev = React.useCallback(() => {
     if (!project || !lightboxImg) return;
     const gallery = project.gallery;
@@ -519,11 +329,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     setLightboxImg(gallery[newIdx]);
   }, [project, lightboxImg]);
 
-  // Reset lightbox when modal closes.
-  // Both `lightboxImgLoaded` AND `lightboxReady` reset here so the
-  // next time the user opens the lightbox, the skeleton + capsule
-  // behave correctly from scratch. `isImgHovered` resets to false so
-  // the X starts hidden when the lightbox re-opens.
+  // Reset lightbox state on close so the next open starts fresh; also
+  // clears hint/zoom timers so none leak.
   React.useEffect(() => {
     if (!open) {
       requestAnimationFrame(() => {
@@ -531,17 +338,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         setIsImgHovered(false);
         setLightboxImgLoaded(false);
         setLightboxReady(false);
-        // Also clear the tall-image scroll-hint timer + state so a
-        // stale timer doesn't fire after the lightbox has closed and
-        // leak the hint into the next open.
+        // Clear the tall-image scroll-hint timer + state.
         setScrollHintVisible(false);
         if (scrollHintTimerRef.current) {
           clearTimeout(scrollHintTimerRef.current);
           scrollHintTimerRef.current = null;
         }
-        // Also clear the zoom-reset hint timer + state so a stale timer
-        // doesn't fire after the lightbox has closed and leak the hint
-        // into the next open.
+        // Clear the zoom-reset hint timer + state.
         setZoomResetHintVisible(false);
         if (zoomResetHintTimerRef.current) {
           clearTimeout(zoomResetHintTimerRef.current);
@@ -551,8 +354,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
           clearTimeout(zoomResetHideTimerRef.current);
           zoomResetHideTimerRef.current = null;
         }
-        // Also cancel any in-progress double-tap zoom animation so a
-        // stale timer doesn't fire after the lightbox has closed.
+        // Cancel any in-progress double-tap zoom animation.
         setZoomAnimating(false);
         if (zoomAnimTimerRef.current) {
           clearTimeout(zoomAnimTimerRef.current);
@@ -573,9 +375,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       setGalleryReady(false);
       setCoverRevealDone(false);
       setCoverMediaReady(false);
-      // Reset gallery batch loading so the next open starts fresh from
-      // batch 1. Without this, reopening the modal would inherit the
-      // previous activeBatch and skip the progressive loading.
+      // Reset gallery batch loading so the next open starts from batch 1.
       setActiveBatch(1);
       setLoadedInBatchCount(0);
       if (parentAnimationTimerRef.current) {
@@ -589,19 +389,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     setGalleryReady(false);
     setPortalReady(false);
     setCoverMediaReady(false);
-    // Reset gallery batch loading on project change too — different
-    // projects have different galleries and we want each to start from
-    // batch 1.
+    // Each project's gallery starts from batch 1.
     setActiveBatch(1);
     setLoadedInBatchCount(0);
-    // Defensive: reset `coverRevealDone` on OPEN too, not just on close.
-    // If the user reopens the modal quickly (before the close-reset has
-    // fully propagated), `coverRevealDone` could still be `true` from the
-    // previous open. The newly-mounted cover motion.div would then see
-    // `animate = { opacity: 1, scale: 1, filter: "none" }` with
-    // `transition: { duration: 0 }` — skipping the aperture animation
-    // entirely. This is the root cause of the "cover animation sometimes
-    // doesn't run on 2nd/3rd open" bug.
+    // Defensive: reset on OPEN too — a stale `true` would skip the
+    // aperture animation on quick reopen.
     setCoverRevealDone(false);
 
     const sequence = ++openSequenceRef.current;
@@ -621,30 +413,17 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     };
   }, [open, project?.id, prefersReducedMotion]);
 
-  // Per-slide reset: when the displayed image changes, reset the
-  // per-image loaded flag (so the skeleton shows for the new image)
-  // and clear any pending X-button auto-hide timer.
-  // IMPORTANT:
-  //  - `lightboxReady` is intentionally NOT reset — it stays true for
-  //    the entire session so the capsule doesn't unmount/remount.
-  //  - `isImgHovered` is intentionally NOT set to true here. The X
-  //    button must NOT auto-appear on slide change — it should only
-  //    appear when the user actually moves the mouse over the image
-  //    (via onMouseEnter / onMouseMove on the image wrapper).
-  //  - We DO clear the auto-hide timer so a stale timer from the
-  //    previous image doesn't fire and hide the X while the user is
-  //    actively moving the mouse over the new image.
+  // Per-slide reset: skeleton for the new image, clear X-hide timers.
+  // `lightboxReady` / `isImgHovered` intentionally NOT reset.
   React.useEffect(() => {
-    // A new slide always starts at its natural scale and requires a fresh
-    // double-click before the mouse wheel can zoom it.
+    // New slide starts at natural scale, needing a fresh double-click
+    // before wheel zoom.
     setLightboxZoom(1);
     setLightboxPan({ x: 0, y: 0 });
     lightboxZoomRef.current = 1;
     lightboxPanRef.current = { x: 0, y: 0 };
-    // Always show the loading state for a newly selected slide, including
-    // cached images. The image's load/complete path will dismiss the
-    // skeleton once this specific slide is ready; this prevents a cached
-    // slide from appearing instantly and causing a layout shift.
+    // Always show the loading state for a newly selected slide (even
+    // cached) to avoid an instant pop + layout shift.
     setLightboxImgLoaded(false);
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
@@ -656,44 +435,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     };
   }, [lightboxImg?.src]);
 
-  // ── Tall-image scroll hint + frame scroll-position reset ─────────
-  // For the two TALL Dev Solutions screenshots (aspectRatio < 1), the
-  // lightbox renders them inside a 16:9 "autofill" frame whose height
-  // crops the image and lets the user scroll VERTICALLY inside the frame
-  // to pan through the full screenshot.
-  //
-  // This is split into TWO effects for robustness:
-  //
-  // Effect A (runs on every image change):
-  //   - Resets `scrollHintVisible` to false.
-  //   - Clears any pending hint timer.
-  //   - Resets the frame's `scrollTop` to 0 (so navigating between two
-  //     tall images starts the new one at the top).
-  //
-  // Effect B (runs when image is loaded AND it's a tall image):
-  //   - Starts a 1500ms timer.
-  //   - When the timer fires, `scrollHintVisible` flips to true and the
-  //     "scroll" hint slides in at the bottom-center of the frame.
-  //
-  // WHY gate the timer on `lightboxImgLoaded` (not just on image change):
-  //   The tall image is loaded via a plain <img>. On FIRST open (uncached),
-  //   the image can take >1.5s to load. If the timer started at click time
-  //   (image change), it would fire while the skeleton is still showing —
-  //   and then when the image finally loads, the dramatic content-height
-  //   change (0 → very tall) can trigger spurious scroll events in some
-  //   browsers (scroll-anchoring, reflow), which immediately dismiss the
-  //   hint via the `onScroll` handler. The user would never see it.
-  //
-  //   By gating on `lightboxImgLoaded`, the timer starts ONLY after the
-  //   image is actually visible. The hint then appears 1.5s after the
-  //   image is visible (≈ 1.5s after lightbox open for cached images).
-  //   No content-height change can happen after this point, so no
-  //   spurious scroll event can dismiss the hint before the user sees it.
-  //
-  // The hint is dismissed (slides out softly) the moment the user scrolls
-  // more than 5px inside the frame — handled by the `onScroll` callback
-  // on the frame element (the 5px threshold filters out sub-pixel scroll
-  // adjustments from browser reflow).
+  // ── Tall-image scroll hint + frame scroll reset ──
+  // Effect A resets hint state + scrollTop per image; Effect B starts the
+  // 1500ms timer once the image is loaded AND scroll is possible (gating
+  // on `lightboxImgLoaded` avoids a spurious scroll event on load
+  // dismissing the hint). Scroll > 5px dismisses (filters sub-pixel).
 
   // Effect A — reset on image change.
   React.useEffect(() => {
@@ -703,38 +449,15 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       clearTimeout(scrollHintTimerRef.current);
       scrollHintTimerRef.current = null;
     }
-    // Reset scroll position to top — applies to ALL images (harmless for
-    // non-tall images because their frame ref is null), but ESSENTIAL
-    // when navigating between two tall images so the new one starts at
-    // the top instead of inheriting the previous scroll offset.
+    // Reset scroll to top when navigating between tall images.
     if (lightboxScrollFrameRef.current) {
       lightboxScrollFrameRef.current.scrollTop = 0;
     }
   }, [lightboxImg?.src]);
 
-  // Effect — measure whether vertical scroll is actually possible inside
-  // the tall image's frame. If the frame is so tall that the image fits
-  // entirely without overflow, there's nothing to scroll, so we keep
-  // `scrollAvailable = false` and the hint timer (Effect B below) never
-  // fires — the "Scroll" hint never appears.
-  //
-  // This handles the mobile-portrait edge case: on a tall narrow phone,
-  // the frame's height (calc(100vh - 112px)) can exceed the image's
-  // rendered height (frameWidth / aspectRatio), so the image fits inside
-  // the frame without overflowing. For example, on an iPhone 14 (390×844):
-  //   - Frame width: 390 - 48 = 342px
-  //   - Frame height: 844 - 112 = 732px
-  //   - Image 1 (aspectRatio 0.417) rendered height: 342 / 0.417 = 820px → overflow
-  //   - On a smaller image with aspectRatio ~0.5, rendered height would be
-  //     684px → FITS inside the 732px frame → no scroll possible.
-  //
-  // The check uses requestAnimationFrame to ensure the image's full
-  // height is laid out before measuring. We also re-check on window
-  // resize (e.g., device rotation, browser UI show/hide) so the
-  // availability state stays in sync with the actual frame size.
-  //
-  // +4px tolerance filters out sub-pixel rounding differences between
-  // scrollHeight and clientHeight that don't represent real overflow.
+  // Measure whether vertical scroll is possible in the tall frame (short
+  // images may fit entirely → hint never appears). Checked next frame
+  // after layout and on resize; +4px tolerance for sub-pixel rounding.
   React.useEffect(() => {
     if (!isDevSolutionsTall || !lightboxImgLoaded) {
       setScrollAvailable(false);
@@ -747,10 +470,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       setScrollAvailable(frame.scrollHeight > frame.clientHeight + 4);
     };
 
-    // Check on next frame to ensure layout is settled.
+    // Check next frame so layout is settled, and re-check on resize.
     const id = requestAnimationFrame(check);
-
-    // Re-check on resize (device rotation, browser UI show/hide).
     window.addEventListener("resize", check);
 
     return () => {
@@ -760,17 +481,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   }, [isDevSolutionsTall, lightboxImgLoaded, lightboxImg?.src]);
 
   // Effect B — start the 1.5s hint timer once the tall image has loaded
-  // AND vertical scroll is actually possible. If the image fits entirely
-  // inside the frame (no overflow), `scrollAvailable` stays false and the
-  // timer never starts — the "Scroll" hint never appears.
+  // AND scroll is possible (otherwise the hint never appears).
   React.useEffect(() => {
     if (!isDevSolutionsTall || !lightboxImgLoaded || !scrollAvailable) return;
 
-    // 1500ms delay before the hint slides in — counted from when the
-    // image is VISIBLE (loaded), not from click time. This matches the
-    // user's spec: "وقتی لایت باکس باز میشه پس از یک و نیم ثانیه
-    // اسکرول کنید بیاد" = "when the lightbox opens, after 1.5s, the
-    // scroll hint should appear"
+    // 1500ms delay, counted from when the image is VISIBLE (loaded).
     scrollHintTimerRef.current = setTimeout(() => {
       setScrollHintVisible(true);
     }, 1500);
@@ -783,16 +498,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     };
   }, [isDevSolutionsTall, lightboxImgLoaded, scrollAvailable, lightboxImg?.src]);
 
-  // ── Gallery batch advancement ──
-  // When all images in the current active batch have loaded (or errored),
-  // advance to the next batch so its images can start loading. The last
-  // batch may have fewer than GALLERY_BATCH_SIZE images — we compute the
-  // expected size from the gallery length.
-  //
-  // Example: gallery of 8 images, BATCH_SIZE=3
-  //   - Batch 1 (images 0-2): expected 3 → when 3 loaded, advance to batch 2
-  //   - Batch 2 (images 3-5): expected 3 → when 3 loaded, advance to batch 3
-  //   - Batch 3 (images 6-7): expected 2 → when 2 loaded, no more batches
+  // ── Gallery batch advancement ── advance when the active batch fully
+  // loads; the last batch may be smaller than GALLERY_BATCH_SIZE.
   React.useEffect(() => {
     if (!project) return;
     const total = project.gallery.length;
@@ -809,9 +516,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     }
   }, [loadedInBatchCount, activeBatch, project]);
 
-  // ── Lightbox zoom/pan: reset on image change ──
-  // When the user navigates to a different lightbox image (or closes the
-  // lightbox), reset zoom and pan so the new image starts at 1x, centered.
+  // ── Lightbox zoom/pan reset on image change ── new image at 1x,
+  // centered; clear cached dims.
   React.useEffect(() => {
     setLightboxZoom(1);
     setLightboxPan({ x: 0, y: 0 });
@@ -821,34 +527,19 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     pinchStartDistRef.current = null;
     pinchStartZoomRef.current = null;
     lastPanPointRef.current = null;
-    // Clear cached dims so the next gesture captures fresh measurements
-    // (the new image may have different dimensions).
+    // Clear cached dims so the next gesture captures fresh measurements.
     imgDimsRef.current = null;
   }, [lightboxImg?.src]);
 
-  // ── Lightbox zoom/pan: pointer handlers ──
-  // These are attached to each <img> in the lightbox (all 3 branches:
-  // tall Dev Sol, non-tall Dev Sol, non-Dev Sol). They track active
-  // pointers to detect 2-finger pinch vs 1-finger pan/drag.
-  //
-  // touch-action: none on the <img> ensures the browser does NOT handle
-  // any touch gesture natively — all touch events come through as pointer
-  // events for JS to handle.
+  // ── Lightbox zoom/pan pointer handlers ── track active pointers to
+  // detect 2-finger pinch vs 1-finger pan; touch-action: none → JS.
   const onZoomPointerDown = React.useCallback((e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     zoomPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // ── Cancel any in-progress double-tap zoom animation ──
-    // If the user starts a manual gesture (pinch/pan) while a double-tap
-    // zoom animation is still running, we must:
-    //   1. Stop the CSS transition (set `zoomAnimating = false`) so the
-    //      transform freezes at its CURRENT visual state.
-    //   2. Sync `lightboxZoomRef`/`lightboxPanRef` to the CURRENT visual
-    //      state (not the animation target), so subsequent pinch/pan math
-    //      starts from where the user actually sees the image.
-    // Without this sync, the refs would have the animation TARGET values
-    // while the visual state is mid-transition — causing a jarring jump
-    // when the gesture begins.
+    // ── Cancel any in-progress double-tap zoom animation ── sync the
+    // zoom/pan refs to the CURRENT visual state so a gesture starting
+    // mid-animation doesn't jump.
     if (zoomAnimating) {
       setZoomAnimating(false);
       if (zoomAnimTimerRef.current) {
@@ -859,11 +550,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       const dims = imgDimsRef.current;
       if (imgEl && dims) {
         const rect = imgEl.getBoundingClientRect();
-        // Visual zoom = current rect width / natural (untransformed) width.
+      // Visual zoom/pan from the current rect vs cached natural size/center.
         const visualZoom = rect.width / dims.imgW;
-        // Visual pan = rect center - natural center. natCenter was cached
-        // at the start of the double-tap (when zoom=1, pan=0) so it's the
-        // TRUE natural center, valid throughout the animation.
         const visualPanX = rect.left + rect.width / 2 - dims.natCenterX;
         const visualPanY = rect.top + rect.height / 2 - dims.natCenterY;
         lightboxZoomRef.current = visualZoom;
@@ -873,28 +561,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       }
     }
 
-    // ── Cache image dimensions for clamp math + pinch anchor ──
-    // Capture the image's natural rendered size (offsetWidth/Height), its
-    // container's size, AND the image's natural center in screen coords —
-    // all ONCE at the start of the gesture. This avoids expensive
-    // forced-layout reads on every pointer-move event, which was the main
-    // cause of lag during rapid pinch-zoom.
-    //
-    // `natCenterX/Y` (the image's center BEFORE any transform) is derived
-    // from the CURRENT transformed bounding rect minus the current pan.
-    // This works because `transform: translate(pan) scale(zoom)` with
-    // `transform-origin: center center` shifts the natural center by
-    // exactly `pan` (scaling around the center doesn't move the center).
-    // So: natCenter = transformedRectCenter - pan.
-    //
-    // `offsetWidth/Height` are LAYOUT properties — they reflect the
-    // element's box size BEFORE any CSS transform. Scaling an element
-    // via `transform: scale()` does NOT change its `offsetWidth`, so
-    // these cached values remain valid for the entire gesture regardless
-    // of how much the user zooms.
-    //
-    // We capture on EVERY pointer-down (not just when size === 2)
-    // because one-finger pan also needs these values for clamping.
+    // ── Cache image dimensions for clamp math + pinch anchor ── captured
+    // ONCE per gesture (avoids forced-layout reads per move). `natCenter`
+    // = transformed rect center - current pan; `offsetWidth/Height` are
+    // pre-transform layout sizes. Captured on EVERY pointer-down —
+    // one-finger pan needs them for clamping too.
     const img = e.currentTarget as HTMLImageElement;
     const container = img?.parentElement ?? null;
     if (img && container) {
@@ -913,12 +584,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     if (zoomPointersRef.current.size === 1) {
       lastPanPointRef.current = { x: e.clientX, y: e.clientY };
     } else if (zoomPointersRef.current.size === 2) {
-      // ── Pinch gesture START ──
-      // Capture the starting finger distance AND the current zoom level.
-      // All subsequent pointermove events compute zoom directly from
-      // these values (see `onZoomPointerMove`), so the zoom level is a
-      // smooth function of absolute finger distance — no per-event
-      // jitter from finger wobble.
+      // ── Pinch gesture START ── capture starting distance + zoom.
       const pts = Array.from(zoomPointersRef.current.values());
       pinchStartDistRef.current = Math.hypot(
         pts[1].x - pts[0].x,
@@ -935,81 +601,35 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     if (zoomPointersRef.current.size >= 2
         && pinchStartDistRef.current !== null
         && pinchStartZoomRef.current !== null) {
-      // ── Pinch zoom (2 fingers) — ABSOLUTE-from-start approach ──
-      //
-      // THE PROBLEM THIS SOLVES:
-      // The previous implementation used a PER-EVENT ratio:
-      //   ratio = currentDist / previousEventDist
-      //   newZoom = oldZoom * ratio
-      // This means each pointermove event compares finger distance
-      // against the IMMEDIATELY PREVIOUS event. Human fingers are never
-      // perfectly steady — during a deliberate pinch-OUT, fingers
-      // micro-wobble (momentarily coming 2-5% closer before continuing
-      // apart). Each micro-wobble made ratio < 1, causing a zoom-OUT
-      // event in the middle of a zoom-IN gesture. The result: stutter,
-      // jitter, and the "lag bug" the user reported ("while zooming in,
-      // it zooms out several times").
-      //
-      // The dead-zone fix (ignoring < 3% changes) didn't fully work
-      // because finger wobble can exceed 3%, and because the dead zone
-      // still updated `lastDist`, causing accumulated drift.
-      //
-      // THE SOLUTION — absolute-from-start:
-      // Instead of comparing to the previous event, compare to the
-      // START of the gesture. The zoom level becomes a DIRECT function
-      // of absolute finger distance:
-      //   newZoom = startZoom * (currentDist / startDist)
-      //
-      // Example (startDist=100, startZoom=1):
-      //   dist=110 → zoom=1.10  (fingers apart → zoom in)
-      //   dist=108 → zoom=1.08  (slight wobble → TINY zoom decrease, proportional)
-      //   dist=115 → zoom=1.15  (fingers further → zoom in more)
-      //   dist=150 → zoom=1.50  (large pinch → large zoom)
-      //
-      // The wobble at dist=108 produces a 2% zoom decrease — barely
-      // visible, and CRUCIALLY it never fights the user's intent. The
-      // zoom monotonically tracks finger distance. No sudden reversals.
-      //
-      // DAMPENING (0.85): a mild factor applied to the distance ratio
-      // so the user has fine control — a 100% increase in finger
-      // distance gives 85% increase in zoom. This makes the gesture
-      // feel "weighted" without making it feel laggy.
+      // ── Pinch zoom (2 fingers) — ABSOLUTE-from-start ──
+      // newZoom = startZoom * (curDist / startDist); a direct function of
+      // absolute finger distance avoids the jitter a per-event ratio
+      // causes. DAMPENING (0.85) gives fine control without lag.
       const pts = Array.from(zoomPointersRef.current.values()).slice(0, 2);
       const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
 
       const startDist = pinchStartDistRef.current;
       const startZoom = pinchStartZoomRef.current;
-      // Guard against division by zero (shouldn't happen — a 2-finger
-      // pinch always has nonzero distance, but be safe).
+      // Guard against division by zero.
       if (startDist > 0 && startZoom !== null) {
         // Absolute distance ratio from gesture start
         const distRatio = dist / startDist;
-        // Mild dampening for fine control (both directions identical,
-        // so no asymmetry bias)
+        // Mild, symmetric dampening for fine control
         const DAMPENING = 0.85;
         const zoomFactor = 1 + (distRatio - 1) * DAMPENING;
         const targetZoom = startZoom * zoomFactor;
 
-        // ── Compute new zoom + anchor-kept pan using cached refs ──
-        // PERFORMANCE: We read from `lightboxZoomRef.current` (a cheap ref
-        // read) and `imgDimsRef.current` (cached at gesture start) instead
-        // of calling setState inside a setState updater or reading
-        // `offsetWidth` (which forces layout reflow). The ref is updated
-        // manually immediately so subsequent events in the same animation
-        // frame see the latest value.
+        // ── New zoom + anchor-kept pan from cached refs (no DOM reads /
+        // layout reflow per event).
         const zOld = lightboxZoomRef.current;
         const newZoom = Math.max(1, Math.min(5, targetZoom));
-        // `actualRatio` accounts for clamping at 1 or 5 AND for the
-        // difference between the absolute target and the current zoom.
-        // Using this in the pan formula keeps the anchor accurate.
+        // `actualRatio` accounts for clamping at 1 or 5 — keeps the pinch
+        // anchor accurate. Skip setState when nothing changed.
         const actualRatio = newZoom / zOld;
-        // Guard: if actualRatio is 1 (no change), skip the setState
-        // entirely — avoids unnecessary re-renders on every micro-event.
         if (actualRatio === 1) return;
 
         setLightboxZoom(newZoom);
-        // Update ref immediately so the next pointer event in the same
-        // frame uses the correct zoom value (not a stale one).
+        // Update ref immediately for same-frame events.
         lightboxZoomRef.current = newZoom;
 
         if (newZoom === 1) {
@@ -1018,17 +638,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
           lightboxPanRef.current = { x: 0, y: 0 };
         } else {
           // ── Pinch anchor: keep the pinch midpoint under the fingers ──
-          // When zoom changes from zOld to newZoom, the image point under
-          // the pinch midpoint M should stay at M. The transform is
-          // `translate(pan) scale(zoom)` with origin `center center`, so a
-          // point at offset `d` from the natural center ends up at
-          // `natCenter + d * zoom + pan`. The point under M (in image
-          // coords) is `d = (M - natCenter - panOld) / zOld`. After zoom
-          // change, we want `M = natCenter + d * newZoom + panNew`, so:
-          //   panNew = M - natCenter - d * newZoom
-          //          = (M - natCenter) * (1 - actualRatio) + panOld * actualRatio
-          // This keeps the pinch midpoint anchored. The pan is then
-          // clamped so the image edge stays within the container edge.
+          // panNew = (M - natCenter) * (1 - actualRatio) + panOld *
+          // actualRatio, then clamp so the image edge stays within the
+          // container edge.
           const dims = imgDimsRef.current;
           const panOld = lightboxPanRef.current;
           if (dims) {
@@ -1038,8 +650,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
             const offsetY = midY - dims.natCenterY;
             let panX = offsetX * (1 - actualRatio) + panOld.x * actualRatio;
             let panY = offsetY * (1 - actualRatio) + panOld.y * actualRatio;
-            // Clamp pan so the image edge cannot be dragged past the
-            // container edge.
+            // Clamp pan so the image edge cannot pass the container edge.
             const zoomedW = dims.imgW * newZoom;
             const zoomedH = dims.imgH * newZoom;
             const maxPanX = Math.max(0, (zoomedW - dims.contW) / 2);
@@ -1057,19 +668,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       const dy = e.clientY - lastPanPointRef.current.y;
 
       if (lightboxZoomRef.current > 1) {
-        // Zoomed in → pan the image (2D, any direction), CLAMPED so the
-        // image edge cannot be dragged past the container edge. Uses
-        // cached dims from `imgDimsRef` (captured at pointer-down) — no
-        // DOM reads here, which keeps the move handler cheap and smooth.
-        //
-        // Clamp math (using cached dims):
-        //   - `dims.imgW/imgH` = image's natural rendered size (before
-        //     transform; stable regardless of zoom level).
-        //   - `zoomedW/H = imgSize * zoom` = visual size after scale.
-        //   - `dims.contW/contH` = the clipping parent's size.
-        //   - `maxPan = max(0, (zoomed - container) / 2)` because the
-        //     transform-origin is `center center`, so half of the overflow
-        //     is the maximum displacement in each direction.
+        // Zoomed in → 2D pan, clamped via cached dims (no DOM reads);
+        // center transform-origin: maxPan = max(0, (zoomed - container)/2).
         const dims = imgDimsRef.current;
         if (dims) {
           const zoom = lightboxZoomRef.current;
@@ -1086,8 +686,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
             return np;
           });
         } else {
-          // Fallback: no cached dims (shouldn't happen — captured at
-          // pointer-down) → pan without clamp.
+          // Fallback: no cached dims → pan without clamp.
           setLightboxPan(p => {
             const np = { x: p.x + dx, y: p.y + dy };
             lightboxPanRef.current = np;
@@ -1095,12 +694,11 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
           });
         }
       } else if (lightboxScrollFrameRef.current) {
-        // Not zoomed + tall image frame exists → scroll the frame
-        // vertically (replaces the native scroll that touch-action: none
-        // disabled). Scrolling UP (dy > 0) should decrease scrollTop.
+        // Not zoomed + tall frame → scroll it vertically (touch-action:
+        // none disabled native scrolling).
         lightboxScrollFrameRef.current.scrollTop -= dy;
       }
-      // Not zoomed + no scroll frame → do nothing (let tap-to-close handle it)
+      // Not zoomed + no scroll frame → nothing (tap-to-close handles it)
 
       lastPanPointRef.current = { x: e.clientX, y: e.clientY };
     }
@@ -1110,11 +708,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
     zoomPointersRef.current.delete(e.pointerId);
     if (zoomPointersRef.current.size < 2) {
-      // Pinch ended (one finger lifted or both lifted) → clear the
-      // gesture-start state. If the user puts a second finger back down,
-      // a FRESH pinch starts with new start values (capturing the CURRENT
-      // zoom as the new startZoom). This is the correct behavior: the
-      // user lifted a finger, so the previous gesture is over.
+      // Pinch ended → a new second finger starts a FRESH pinch.
       pinchStartDistRef.current = null;
       pinchStartZoomRef.current = null;
     }
@@ -1126,26 +720,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     }
   }, []);
 
-  // Double-tap to TOGGLE zoom (common UX pattern in photo viewers).
-  // Detected via two rapid pointer-down events on the same target within
-  // 300ms.
-  //
-  // Behavior:
-  //   - NOT zoomed (zoom === 1) + double-tap → zoom IN to 1.8x, centered on
-  //     the tap point (the tapped spot stays under the cursor). 1.8x is a
-  //     satisfying "camera lens" zoom — enough to inspect detail clearly
-  //     without losing orientation. The CSS transition (0.45s easeOutExpo)
-  //     gives a smooth, cinematic zoom-in feel.
-  //   - Zoomed (zoom > 1) + double-tap → zoom OUT to 1x (reset), with the
-  //     same smooth transition.
-  //
-  // Tap-point zoom math:
-  //   The image has `transform-origin: center center`. Scaling by `zoomNew`
-  //   moves a point at offset `d` from the image center to `d * zoomNew`.
-  //   To keep the tap point under the cursor after scaling, we translate
-  //   by `d * (1 - zoomNew)` — i.e. `pan = clickOffset * (1 - zoomNew)`.
-  //   The pan is then clamped to maxPan so the image edge stays within
-  //   the container edge (same clamp logic as the one-finger pan handler).
+  // Double-tap toggles zoom (two pointer-downs within 300ms): at 1x →
+  // 1.8x centered on the tap point (smooth 0.45s transition); zoomed →
+  // reset to 1x. pan = clickOffset * (1 - zoomNew), then clamped.
   const lastTapRef = React.useRef(0);
   const onZoomDoubleTap = React.useCallback((e: React.MouseEvent<HTMLImageElement>) => {
     const now = Date.now();
@@ -1162,28 +739,22 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         lightboxZoomRef.current = 1;
         lightboxPanRef.current = { x: 0, y: 0 };
       } else {
-        // Currently at 1x → zoom IN to 1.8x centered on the tap point.
-        // 1.8x is a satisfying "camera lens" zoom level — enough to
-        // inspect detail clearly without losing orientation. Combined
-        // with the 0.45s easeOutExpo transition, this feels like a
-        // deliberate lens zoom rather than a snap.
+        // At 1x → zoom IN to 1.8x centered on the tap point.
         const img = e.currentTarget;
         const container = img?.parentElement ?? null;
         const zoomNew = 1.8;
 
         if (img && container) {
-          // `getBoundingClientRect()` returns the image's CURRENT rendered
-          // position (at zoom=1, pan=0, this is the natural rect). The
-          // click offset is calculated relative to the image's center.
+          // Click offset relative to the image's center (rect is natural
+          // at zoom=1, pan=0).
           const rect = img.getBoundingClientRect();
           const clickOffsetX = e.clientX - (rect.left + rect.width / 2);
           const clickOffsetY = e.clientY - (rect.top + rect.height / 2);
           // Pan needed to keep the tap point under the cursor after scaling
           let panX = clickOffsetX * (1 - zoomNew);
           let panY = clickOffsetY * (1 - zoomNew);
-          // Clamp pan so the image edge cannot be dragged past the
-          // container edge. Also cache dims (+ natural center) for
-          // subsequent pan/pinch.
+          // Clamp pan; also cache dims (+ natural center) for subsequent
+          // pan/pinch.
           const imgW = img.offsetWidth;
           const imgH = img.offsetHeight;
           const contW = container.offsetWidth;
@@ -1215,13 +786,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     }
   }, []);
 
-  // Keyboard nav inside lightbox
-  // ── RTL-aware arrow direction ──
-  // In LTR (English): ArrowLeft → previous, ArrowRight → next (forward = right)
-  // In RTL (Persian): ArrowLeft → next, ArrowRight → previous (forward = left,
-  //   because Persian reading flows right-to-left, so "back/previous" is to
-  //   the right and "forward/next" is to the left). This matches the user's
-  //   expectation that the right arrow goes to the previous image in RTL.
+  // Keyboard nav — RTL-aware arrows: LTR ArrowLeft=prev / ArrowRight=next;
+  // RTL (Persian) reversed ("previous" is to the right).
   React.useEffect(() => {
     if (!lightboxImg) return;
     const isRTL = document.documentElement.dir === "rtl" || document.documentElement.lang === "fa";
@@ -1234,9 +800,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         e.preventDefault();
         if (isRTL) lightboxPrev(); else lightboxNext();
       }
-      // Escape closes the lightbox (NOT the modal). We preventDefault
-      // so the Radix Dialog doesn't also receive the Escape and close
-      // the modal underneath.
+      // Escape closes the lightbox only — preventDefault keeps Radix
+      // Dialog from also closing the modal underneath.
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
@@ -1247,24 +812,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [lightboxImg, lightboxPrev, lightboxNext]);
 
-  // ── Stable overlay handlers (useCallback, empty deps) ──────────────
-  // These handlers ONLY use refs (pointerDownRef, imageWrapperRef,
-  // hideTimerRef) and stable state setters (setLightboxImg,
-  // setIsImgHovered) — no reactive state. So they can be created ONCE
-  // with an empty dependency array. This means:
-  //   - The motion.div overlay element does NOT get a new prop reference
-  //     on every parent re-render (e.g. during pinch-zoom when
-  //     `lightboxZoom` / `lightboxPan` change hundreds of times per
-  //     second). React's reconciler sees the same handler reference and
-  //     skips re-attaching the DOM event listener.
-  //   - The motion.div's className still updates (it depends on locale,
-  //     which is fine) but the behavioral handlers stay stable.
-  //
-  // The arrow-direction logic for the capsule (LTR vs RTL) is handled
-  // inside the JSX (it depends on `locale`, which IS reactive) — that's
-  // a small inline closure that recreates with `locale`, which is fine
-  // because `locale` changes extremely rarely (only when the user
-  // switches language).
+  // ── Stable overlay handlers (useCallback, empty deps) ── they only use
+  // refs + stable setters. RTL-aware arrow actions live inline (need `locale`).
   const handleOverlayPointerDown = React.useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
     pointerDownRef.current = {
@@ -1285,20 +834,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     const dx = e.clientX - start.x;
     const dy = e.clientY - start.y;
     const dist = Math.hypot(dx, dy);
-    // Only close if:
-    //   1. This was a real tap (< 8px movement), not a drag, AND
-    //   2. The pointer did NOT start inside the image wrapper
-    //      (so tapping the image itself never closes the lightbox).
+    // Close only on a real tap (< 8px) outside the image wrapper.
     if (dist < 8 && !start.targetIsImage) {
       setLightboxImg(null);
     }
   }, []);
 
-  // Shared implementation of the mouse-enter / mouse-move handler.
-  // Both events trigger the SAME behavior: clear any pending hide timer,
-  // mark the image as hovered (so the X button shows), and arm a new
-  // 2000ms hide timer. Using a single callback for both keeps the code
-  // DRY and gives a single stable reference for the JSX.
+  // Mouse-enter/move: show the X and arm a 2000ms hide timer.
   const handleOverlayMouseEnterOrMove = React.useCallback(() => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
@@ -1307,11 +849,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
     hideTimerRef.current = setTimeout(() => setIsImgHovered(false), 2000);
   }, []);
 
-  // Stable click handler for the X button — calls stopPropagation so the
-  // click event doesn't bubble up to the overlay's tap-to-close handler
-  // (which is a no-op since we're already closing, but stopPropagation is
-  // the safer pattern). Same as the inline `(e) => { e.stopPropagation();
-  // setLightboxImg(null); }` it replaced, but with a stable reference.
+  // X-button click — stopPropagation so it doesn't trigger tap-to-close.
   const closeLightboxWithStop = React.useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setLightboxImg(null);
@@ -1320,14 +858,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
   return (
     <DialogPrimitive.Root
       open={open}
-      // Guard: when the lightbox is open, ANY attempt to close the modal
-      // (via clicking outside, pressing Escape, etc.) is intercepted and
-      // ignored — only the lightbox should close in that state. The
-      // lightbox is closed by its own pointer handlers (tap on overlay
-      // background or X button), which call setLightboxImg(null).
+      // Guard: while the lightbox is open, swallow modal-close attempts.
       onOpenChange={(nextOpen) => {
         if (!nextOpen && lightboxImg) {
-          // Lightbox is open — swallow the modal-close attempt.
           return;
         }
         onOpenChange(nextOpen);
@@ -1336,7 +869,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
       <AnimatePresence>
         {open && project && portalReady && (
           <DialogPrimitive.Portal forceMount>
-            {/* Backdrop — hidden behind lightbox's opaque bg when lightbox is open */}
+            {/* Backdrop — hidden behind lightbox's opaque bg when open */}
             <DialogPrimitive.Overlay asChild>
               <motion.div
                 initial={{ opacity: 0 }}
@@ -1362,38 +895,22 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
               <motion.div
                 key={modalOpenKey}
                 initial={{ opacity: 0, y: 16 }}
-                // Do not gate the whole panel on the cover image. Cover files
-                // are much larger for some projects (especially the store),
-                // and waiting for an image callback before mounting the panel
-                // makes the modal look broken or unresponsive on a slow/cache
-                // miss. The cover itself still has its own reveal gate below;
-                // the panel can open immediately and show its background while
-                // the cover is loading.
-                //
-                // The backdrop overlay still fades in immediately (separate
-                // motion.div above), so the user sees the screen dim right
-                // away and knows something is loading.
+                // Panel opens immediately (not gated on the cover — slow
+                // loads would look broken); the cover has its own gate below.
                 animate={{
                   opacity: 1,
                   y: 0,
                 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-                // When the parent entrance animation completes we trigger
-                // the inner staggered content to animate. For slow or
-                // delayed first-open scenarios we wait a short fixed
-                // buffer (parent animation duration + small margin)
-                // to avoid child animations running too quickly.
+                // After the entrance animation, start the inner staggered
+                // content (with a small buffer for delayed first-opens).
                 onAnimationComplete={() => {
                   if (!open) return;
-                  // Clear the willChange hint + transform so the browser can
-                  // demote this element off its dedicated GPU compositor
-                  // layer. A persistent GPU layer with any non-`none`
-                  // transform disables subpixel anti-aliasing for text in
-                  // Chrome/Chromium, producing the "subtle blur" effect on
-                  // modal text. Clearing it post-animation restores crisp
-                  // text rendering. We animate only opacity + y (no scale)
-                  // so framer-motion leaves no lingering scale transform.
+                  // Clear willChange + transform after entrance so the
+                  // browser can demote the element off its GPU layer — a
+                  // persistent layer with non-`none` transform disables
+                  // subpixel anti-aliasing in Chrome (subtle text blur).
                   const el = modalPanelRef.current;
                   if (el && !prefersReducedMotion) {
                     el.style.willChange = "auto";
@@ -1415,47 +932,21 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   }, 40); // small buffer to keep entrance snappy
                 }}
                 ref={modalPanelRef}
-                // No willChange here — it's added only during the entrance
-                // animation via the initial/animate transition and cleared
-                // in onAnimationComplete to avoid a persistent GPU layer.
+                // No willChange here — cleared in onAnimationComplete to
+                // avoid a persistent GPU layer.
                 style={{ borderWidth: 0 }}
                 className={cn(
-                  // Centering on desktop uses `sm:inset-y-6 sm:inset-x-0 sm:m-auto`
-                  // which sets margin:auto within a container that has 24px (6 ×
-                  // 4px) top + bottom insets — this centers the panel BOTH
-                  // horizontally AND vertically WITHOUT any transform, while
-                  // keeping a 24px gap from the top and bottom of the viewport.
-                  // Avoiding transform is critical: a persistent transform
-                  // (even translate(-50%,-50%)) promotes the element to a
-                  // GPU compositor layer, which disables subpixel AA for text
-                  // in Chrome and produces the "subtle blur" effect.
-                  // Mobile uses a bottom sheet (fixed bottom-0, no centering).
+                  // Desktop centering via inset + margin:auto — NO
+                  // transform (would promote a GPU layer and blur text).
                   "fixed inset-x-0 bottom-0 z-60 mx-auto flex w-full max-w-3xl flex-col rounded-t-[2rem] sm:inset-y-6 sm:inset-x-0 sm:m-auto sm:max-h-[calc(100vh-48px)] sm:rounded-[2rem]",
                   lightboxImg
                     ? "max-h-none overflow-hidden border-0 bg-transparent pointer-events-none"
                     : "max-h-[92vh] overflow-hidden bg-background shadow-2xl"
                 )}
               >
-                {/* Close button — hidden when lightbox is open.
-                    Positioned to match the modal body's padding (p-6 on
-                    mobile = 1.5rem, sm:p-8 on desktop = 2rem) so the X
-                    aligns with the inner content edge instead of hugging
-                    the modal border. Sized to match the lightbox close
-                    button (h-11 w-11 / X h-5 w-5) for visual consistency.
-                    Animated entrance: fades + scales in shortly after the
-                    panel becomes visible.
-
-                    IMPORTANT — gating on `coverMediaReady`:
-                    The parent panel sits at opacity:0 + y:16 until
-                    `coverMediaReady` flips true (we gate the panel entrance
-                    on the cover image loading). Without also gating this
-                    button's entrance on the same flag, framer-motion would
-                    start the button's 0.3s delay timer from MOUNT time —
-                    so by the time the panel finally appears (after image
-                    load), the button would already be at opacity:1 and the
-                    entrance animation would be invisible. Tying `animate`
-                    to `coverMediaReady` ensures the button starts its
-                    fade+scale ONLY once the panel is actually visible. */}
+                {/* Close button — hidden when lightbox is open. Entrance
+                    gated on `coverMediaReady` (the panel is invisible
+                    until then). */}
                 {!lightboxImg && (
                   <DialogPrimitive.Close asChild>
                     <motion.button
@@ -1471,30 +962,17 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   </DialogPrimitive.Close>
                 )}
 
-                {/* Scrollable body — hidden when lightbox is open.
-                    Uses native overflow-y-auto + scrollbar-none so NO
-                    scrollbar is visible (per user request — only the main
-                    page scroll should show). Scrolling still works via
-                    wheel/touch/keyboard. overscroll-contain prevents
-                    scroll chaining to the page behind. */}
+                {/* Scrollable body — hidden when lightbox is open. */}
                 <div ref={scrollRef} className={cn("flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none", lightboxImg && "opacity-0 pointer-events-none")}>
-                  {/* Cover — aperture reveal (blur + brightness + scale).
-                      Solid bg-background on the container prevents flash
-                      through during the filter transition. Works for both
-                      video (Dev Solutions) and images. */}
+                  {/* Cover — aperture reveal. Solid bg prevents flash
+                      during the filter transition. */}
                   <div
                     style={{
                       backgroundColor: "var(--background)",
                       marginBottom: -2,
-                      // GPU layer promotion ONLY during the reveal animation.
-                      // After reveal (`coverRevealDone`), we drop translateZ(0) +
-                      // backfaceVisibility so the cover image renders on the
-                      // main compositor layer with full-quality resampling.
-                      // A persistent GPU layer causes Chromium to use bilinear
-                      // texture sampling for the heavily downscaled cover
-                      // (8K source → ~768px display, ~11× downscale), producing
-                      // a subtle blur. Same pattern used on the modal panel
-                      // itself (see onAnimationComplete on the panel above).
+                      // GPU layer promotion ONLY during the reveal; dropped
+                      // afterwards so the heavily downscaled cover renders
+                      // on the main compositor layer (GPU layers can blur it).
                       ...(!coverRevealDone && !prefersReducedMotion
                         ? { transform: "translateZ(0)", backfaceVisibility: "hidden" as const }
                         : {}),
@@ -1502,28 +980,15 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     className="relative aspect-[16/9] w-full overflow-hidden rounded-t-[2rem] sm:rounded-t-[2rem]"
                   >
                     <motion.div
-                      // Use explicit initial/animate (not variants) so we
-                      // have full control over the post-animation state.
-                      // When `coverRevealDone` is true, we swap the animate
-                      // target to one with `filter: "none"` and `scale: 1` —
-                      // framer-motion applies these as inline styles, which
-                      // clears the animation-time blur/scale. The outer
-                      // wrapper (see above) drops its `translateZ(0)` +
-                      // `backfaceVisibility: hidden` once reveal is done so
-                      // the cover image renders on the main compositor layer
-                      // with full-quality resampling (avoids the subtle blur
-                      // that GPU-composited layers exhibit for heavily
-                      // downscaled images like our 8K source → 768px display).
+                      // Explicit initial/animate. When `coverRevealDone`,
+                      // swap the animate target to `filter: "none"` /
+                      // `scale: 1` — framer-motion applies these as inline
+                      // styles, clearing the animation-time blur/scale.
                       //
                       // GATING on `coverMediaReady`: the aperture animation
-                      // only runs AFTER the image/video has loaded. Before
-                      // that, `animate` mirrors `initial` so framer-motion
-                      // does nothing (no transition), keeping the cover
-                      // invisible + blurred until the media is ready. This
-                      // ensures the camera-lens reveal is VISIBLE on first
-                      // open (when the image takes time to load) instead of
-                      // animating an empty container and having the image
-                      // pop in after the blur has already cleared.
+                      // only runs AFTER the image/video has loaded; before
+                      // that `animate` mirrors `initial` so the cover stays
+                      // invisible + blurred until the media is ready.
                       initial={
                         prefersReducedMotion
                           ? { opacity: 0 }
@@ -1562,49 +1027,29 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           muted
                           playsInline
                           onLoadedData={() => {
-                            // Defer to next frame so framer-motion has time to
-                            // commit the hidden `initial` state before we flip
-                            // to the shown `animate` target. Without this, on
-                            // cached re-opens the browser can fire onLoad/
-                            // onLoadedData synchronously during mount, causing
-                            // framer-motion to see initial=shown and skip the
-                            // aperture animation entirely.
+                            // Defer to next frame so framer-motion commits
+                            // the hidden `initial` state before we flip to
+                            // shown — cached re-opens can fire onLoad
+                            // synchronously during mount and skip the reveal.
                             requestAnimationFrame(() => setCoverMediaReady(true));
                           }}
-                          // Safety net: same pattern as the Image onError above.
+                          // Same safety net as the Image onError below.
                           onError={() => {
                             requestAnimationFrame(() => setCoverMediaReady(true));
                           }}
                           className="h-full w-full object-cover object-center"
                         />
                       ) : (
-                        /* next/image (NOT SmartImage) for the modal cover.
-                         *
-                         * Cover source images are 8K (8640×4320). A plain <img>
-                         * forces the browser to bilinearly downscale ~11×
-                         * (8640px → 768px display), producing a subtle blur.
-                         * next/image generates a srcset of pre-sized variants
-                         * so the browser receives an image close to display size.
-                         *
-                         * `sizes` tells the optimizer the true rendered width:
-                         * modal is max-w-3xl = 768px on desktop, full width on
-                         * mobile. On a 2× retina display, the browser picks the
-                         * 1920w variant (closest to 768×2 = 1536).
-                         *
-                         * The motion.div parent has `relative` in its className
-                         * so next/image `fill` (position: absolute) fills the
-                         * motion.div, ensuring the reveal animation's scale/blur
-                         * transform applies to the image.
-                         *
-                         * `onLoad` fires when the image has finished loading
-                         * (from network OR cache). This gates the aperture
-                         * animation above via `coverMediaReady`. The
-                         * requestAnimationFrame wrapper defers the state flip
-                         * so framer-motion has time to mount with the hidden
-                         * initial state first — without it, cached re-opens
-                         * can fire onLoad synchronously during mount, causing
-                         * framer-motion to see initial=shown and skip the
-                         * aperture animation. */
+                        /* next/image (NOT SmartImage) for the modal cover:
+                         * 8K sources would blur under ~11× bilinear
+                         * downscale in a plain <img>; next/image serves
+                         * pre-sized variants. `sizes` reflects max-w-3xl
+                         * (768px) desktop / 100vw mobile. The motion.div
+                         * parent is `relative` so `fill` works. `onLoad`
+                         * (network OR cache) gates the aperture via
+                         * `coverMediaReady`; the rAF wrapper lets
+                         * framer-motion mount with the hidden initial
+                         * state first so cached re-opens still animate. */
                         <Image
                           key={`${project.id}-cover`}
                           src={project.cover}
@@ -1617,13 +1062,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           onLoad={() => {
                             requestAnimationFrame(() => setCoverMediaReady(true));
                           }}
-                          // Safety net: if the cover fails to load, flip
-                          // coverMediaReady anyway so the modal panel does
-                          // not stay invisible forever (we gate the panel
-                          // entrance on this flag — see the motion.div above).
-                          // The cover container's bg-background will show
-                          // through as a clean empty area instead of leaving
-                          // the whole modal stuck at opacity:0.
+                          // Safety net: on load failure flip the flag anyway
+                          // so the panel doesn't stay invisible forever.
                           onError={() => {
                             requestAnimationFrame(() => setCoverMediaReady(true));
                           }}
@@ -1631,14 +1071,10 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         />
                       )}
                     </motion.div>
-                    {/* Cover bottom fade.
-                        - Mafia Master & Dev Solutions: these covers are bright,
-                          so they get a taller + stronger black fade (h-2/3,
-                          from-black/95) so the shadow reads ON the image
-                          instead of vanishing — and never looks like a white
-                          shadow in light theme.
-                        - All other projects: `from-background` so the cover
-                          blends seamlessly into the modal content area below. */}
+                    {/* Cover bottom fade. mafia-master & dev-solutions
+                        (bright covers) get a taller + stronger black fade;
+                        all others use `from-background` to blend into the
+                        content area below. */}
                     <div
                       className={cn(
                         "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent",
@@ -1648,18 +1084,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       )}
                     />
 
-                    {/* Project link — overlaid on the cover, bottom corner
-                        opposite to the reading direction (so it never collides
-                        with the modal's text column). Sits over the cover's
-                        dark gradient fade. Glass pill styled to match the
-                        bento card's "مشاهده" button: semi-transparent bg +
-                        backdrop-blur + subtle inset highlight, with a hover
-                        color swap (no scale). Reads clearly in both light &
-                        dark themes because the cover bottom always has a
-                        strong black fade. Hidden when no link.
-                        Animated entrance: fades + slides up + scales in
-                        after the cover has begun its aperture reveal, so
-                        the button feels like it emerges from the cover. */}
+                    {/* Project link — glass pill overlaid on the cover,
+                        bottom corner opposite the reading direction.
+                        Entrance gated on `coverMediaReady`. */}
                     {project.link && (
                       <motion.a
                         href={project.link.href}
@@ -1677,7 +1104,6 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           "transition-colors duration-300",
                           "hover:bg-white/25 hover:text-white hover:border-white/25",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                          // Opposite corner to the reading direction:
                           // LTR → bottom-right; RTL → bottom-left.
                           locale === "fa" ? "left-4" : "right-4"
                         )}
@@ -1686,9 +1112,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         <ArrowUpRight
                           className={cn(
                             "h-3.5 w-3.5",
-                            // Mirror the arrow for RTL (Persian) so it points
-                            // in the reading direction — same pattern as the
-                            // bento card's "مشاهده" button.
+                            // Mirror the arrow for RTL so it points in the
+                            // reading direction.
                             locale === "fa" ? "-scale-x-100" : ""
                           )}
                         />
@@ -1757,22 +1182,12 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             : undefined;
 
                           // ── Progressive batch loading ──
-                          // Each image belongs to a 1-indexed batch:
-                          //   batch = floor(i / 3) + 1
-                          // Only images whose batch is <= activeBatch get a
-                          // real <img> (via SmartImage). Images in later
-                          // batches render only a skeleton placeholder — no
-                          // <img> in the DOM means no network request and no
-                          // decode work, so the device only processes 3 images
-                          // at a time. Once the current batch's images all
-                          // load, `activeBatch` advances (see the batch
-                          // advancement effect above) and the next batch's
-                          // SmartImages mount and start loading.
-                          //
-                          // The button is always clickable — if the user
-                          // taps a not-yet-loaded cell, the lightbox opens
-                          // and loads the full image directly (the lightbox
-                          // has its own loading state, so this is fine).
+                          // Only images whose batch (floor(i/3)+1) is <=
+                          // activeBatch get a real <img>; later batches
+                          // render skeleton only (no network/decode work).
+                          // The button is always clickable — a tap on a
+                          // not-yet-loaded cell opens the lightbox, which
+                          // loads the full image itself.
                           const imageBatch = Math.floor(i / GALLERY_BATCH_SIZE) + 1;
                           const isImageActive = imageBatch <= activeBatch;
 
@@ -1792,31 +1207,16 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                               >
                                 {isImageActive ? (
                                   isDevSolutions ? (
-                                    /* ── Dev Solutions gallery thumbnail — OPTIMIZED ──
-                                       Source images are extremely heavy:
-                                         - Image 1 "1-DS Index":  5760×13820 = 1.5MB
-                                         - Image 3 "3-Blog page": 5760×8012  = 775KB
-                                       Loading these RAW (as SmartImage does) forces
-                                       the browser to download the full payload AND
-                                       allocate a decoded bitmap at native resolution
-                                       (~320MB for the 5760×13820 image!) for EACH
-                                       thumbnail. The first batch (3 images) loads
-                                       simultaneously, so the modal was hit with
-                                       ~480MB of decoded bitmap work on first open —
-                                       the root cause of the "modal doesn't render
-                                       properly with heavy images" bug.
-
-                                       Fix: route through /_next/image?url=...&w=640&q=80
-                                       so the Next.js server returns a pre-resized +
-                                       recompressed variant (~80KB, decoded bitmap
-                                       ~4MB). At w=640 the variant covers the gallery's
-                                       display size (3-col grid ≈ 240px, 2× retina =
-                                       480px) with retina-quality headroom. Visual
-                                       output is IDENTICAL to the raw SmartImage path
-                                       at the displayed size — same object-cover crop,
-                                       same object-top alignment for tall images, same
-                                       hover scale, same skeleton-shimmer placeholder.
-                                       Only the underlying bytes/bitmaps change. */
+                                    /* ── Dev Solutions gallery thumbnail — optimized ──
+                                       Source images are extremely heavy
+                                       (5760×13820 = 1.5MB, ~320MB decoded
+                                       bitmap per thumbnail). Route through
+                                       /_next/image?url=...&w=640&q=80 so the
+                                       server returns a pre-resized +
+                                       recompressed variant (~4MB decoded).
+                                       w=640 covers the 3-col grid cell (~240px,
+                                       480px retina). Visually identical to
+                                       the raw path at display size. */
                                     <DevSolutionsThumb
                                       src={img.src}
                                       alt={tt(img.alt)}
@@ -1839,17 +1239,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                                     />
                                   )
                                 ) : (
-                                  /* ── Inactive-batch placeholder ──
-                                     No <img> is rendered, so the browser
-                                     makes NO network request and does NO
-                                     decode work for this cell. We show only
-                                     the skeleton-shimmer animation so the
-                                     user sees a consistent placeholder
-                                     matching the active cells' loading
-                                     state. When `activeBatch` advances to
-                                     include this image, the placeholder is
-                                     swapped for a real SmartImage which
-                                     starts loading immediately. */
+                                  /* ── Inactive-batch placeholder ── no <img>
+                                     → no network/decode work; pure skeleton
+                                     shimmer until `activeBatch` advances. */
                                   <div
                                     className={cn(
                                       "absolute inset-0 skeleton-shimmer",
@@ -1883,34 +1275,12 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
         )}
       </AnimatePresence>
 
-      {/* ── Lightbox ─────────────────────────────────────────────────
-          Rendered via React.createPortal(…, document.body) so it lives
-          OUTSIDE the Radix Dialog Portal. This is critical: Radix Dialog
-          uses `react-remove-scroll` which attaches a capture-phase
-          `touchmove` preventDefault on the document while the dialog is
-          open. That lock covers any descendant of the Dialog Portal,
-          which would silently disable native touch-scroll on the
-          lightbox image on mobile.
-
-          By portaling the lightbox directly to document.body (sibling
-          of the Radix Portal, not a child), we escape the scroll lock
-          and the browser's native touch scrolling works on the overlay.
-
-          Closing rules:
-          - Tap on the overlay background (outside the image) → close.
-          - Tap on the image → do NOT close (image is for viewing only).
-          - Tap on the X button → close.
-          - Touch-drag on the image → scroll the image (mobile), never close.
-
-          Touch handling on mobile:
-          - The overlay is the scroll container (overflow-y-auto on mobile).
-          - We track pointer down/move/up: only treat it as a "tap-to-close"
-            when the pointer moved less than 8px between down and up (a real
-            tap, not a drag) AND the target is NOT inside the image wrapper.
-          - `touch-action: pan-y` lets the browser handle vertical
-            scrolling natively so drag works smoothly on mobile.
-          - `overscroll-contain` keeps the scroll inside this overlay
-            instead of bleeding through to the page behind. */}
+      {/* ── Lightbox ── portaled to document.body (OUTSIDE the Radix
+          Dialog Portal) to escape Radix's `react-remove-scroll` capture-
+          phase touchmove lock, which would disable native touch-scroll on
+          mobile. Close on: overlay tap outside the image, or the X button;
+          image taps and drags never close. Tap = < 8px movement, and the
+          overlay is `touch-action: pan-y` + `overscroll-contain`. */}
       {typeof document !== "undefined" &&
         createPortal(
           <AnimatePresence>
@@ -1922,94 +1292,46 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className={cn(
-                  // ─── Lightbox overlay (UNIFIED standard — mobile = desktop) ───────
-                  // The lightbox uses the SAME layout standard on ALL breakpoints:
-                  //   - VERTICAL padding: pt-6 pb-6 (24px top + 24px bottom).
-                  //   - HORIZONTAL margin: driven by each image's own max-width
-                  //     (max-w-[calc(100vw-4rem)] on mobile, sm:max-w-[calc(100vw-8rem)]
-                  //     on desktop = 32px / 64px margin each side).
-                  //   - CENTERING: NO `justify-center` on the overlay. Instead, the
-                  //     inner content div uses `my-auto` — this centers the image +
-                  //     capsule group vertically when there is free space, AND
-                  //     gracefully falls back to top-alignment (scrollable from
-                  //     top) when content overflows. This is the robust pattern
-                  //     for "always centered, but never cut off at the top".
-                  //     `justify-center` + `overflow-y-auto` is buggy: when
-                  //     content overflows, flexbox still tries to center it,
-                  //     causing the TOP to be cut off and unreachable until the
-                  //     user scrolls — this was the mobile centering bug.
-                  //   - GAP between image and capsule = 20px (the capsule wrapper's
-                  //     top padding, since mt is 0).
+                  // ─── Lightbox overlay (unified mobile = desktop) ───
+                  // Inner content uses `my-auto` (NOT `justify-center`)
+                  // for centering: centers when there is free space, falls
+                  // back to top-alignment when content overflows
+                  // (`justify-center` + overflow cuts off the top).
+                  // `overscroll-contain` prevents scroll chaining.
                   //
-                  // Previously mobile used `justify-start pt-10 pb-20 px-6` which
-                  // pushed images to the top with asymmetric padding — different
-                  // from desktop. Now mobile matches desktop exactly: centered,
-                  // same padding, same image sizing.
-                  //
-                  // `overscroll-contain` prevents scroll chaining to the page
-                  // behind on ALL breakpoints.
-                  //
-                  // ── touch-action: pan-y ──
-                  // On mobile we use `pan-y` on the OVERLAY (NOT the images).
-                  // This allows vertical scrolling of the overlay itself (for
-                  // tall images when zoom=1) but blocks native pinch-zoom —
-                  // which is intentional, because we handle pinch-zoom in JS
-                  // via Pointer Events on the <img> elements (the images have
-                  // their own `touch-action: none`). If we used `manipulation`
-                  // here, the browser's native pinch-zoom would interfere with
-                  // our JS pinch detection (both would try to handle the same
-                  // 2-finger gesture).
-                  //
-                  // The overlay's `pan-y` only applies to touches on the
-                  // overlay background (outside the image). Touches on the
-                  // image use the image's `touch-action: none`.
-                  // The overlay itself must never scroll. Tall images expose
-                  // their own scroll container below; short images remain
-                  // completely fixed in the viewport.
+                  // ── touch-action: pan-y ── allows native vertical
+                  // scrolling on the overlay but blocks native pinch-zoom,
+                  // which we handle in JS on the <img> (touch-action: none).
+                  // The overlay itself never scrolls — tall images expose
+                  // their own scroll container.
                   "fixed inset-0 z-[200] flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-hidden overscroll-none scrollbar-none bg-black/50 backdrop-blur-md",
                   "max-sm:[touch-action:pan-y]"
                 )}
-              // Stop wheel events from bubbling up to the document, where
-              // `react-remove-scroll` (installed by Radix Dialog) captures
-              // them with a non-passive listener and calls preventDefault().
-              // Without this stopPropagation, the wheel event reaches the
-              // document handler which kills the native scroll on this overlay.
+              // Stop wheel events from reaching the document, where
+              // `react-remove-scroll` (Radix Dialog) preventDefaults them
+              // and kills native scroll on this overlay.
               onWheel={(e) => {
-                // Consume wheel events at the lightbox boundary so they can
-                // never scroll the page behind it. The tall-image frame has
-                // already handled its own inactive-zoom scrolling by the
-                // time this bubbling handler runs.
+              // Consume wheel at the lightbox boundary so it can never
+              // scroll the page behind.
                 e.preventDefault();
                 e.stopPropagation();
               }}
-              // Same for touchmove — `react-remove-scroll` also captures
-              // touchmove at the document level and preventDefaults it for
-              // any element not inside the modal's scroll lock group.
+              // Same for touchmove — `react-remove-scroll` captures it at
+              // the document level too.
               onTouchMoveCapture={stopPropagation}
               onPointerDown={handleOverlayPointerDown}
               onPointerUp={handleOverlayPointerUp}
-              // ── Mouse-move auto-show/auto-hide for the X close button ──
-              // Attached to the OVERLAY (not the image wrapper) so the X
-              // reappears whenever the mouse moves ANYWHERE in the lightbox
-              // — including over the dark background around the image.
-              // Behavior (desktop only; mobile uses the [@media(hover:none)]
-              // CSS override on the button itself):
-              //   1. Mouse moves → isImgHovered = true → X visible.
-              //   2. After 2000ms of NO mouse movement → isImgHovered = false
-              //      → X fades out.
-              //   3. Any new mouse movement resets the 2s timer.
-              // The 2s here matches the 2s open-show timer so the behavior
-              // is consistent: "2s visible → fade out → reappear on movement
-              // → 2s visible → fade out if no movement"
+              // ── X-button auto-show/hide (desktop) ── attached to the
+              // overlay so the X reappears on mouse movement ANYWHERE in
+              // the lightbox; hides after 2000ms idle; mobile uses the
+              // [@media(hover:none)] CSS override.
               onMouseEnter={handleOverlayMouseEnterOrMove}
               onMouseMove={handleOverlayMouseEnterOrMove}
             >
               <div className="flex flex-col items-center my-auto">
 
-                {/* Image — slide animation only on image.
-                    The AnimatePresence with mode="wait" ensures only the
-                    image swaps with animation; the capsule below is
-                    outside this AnimatePresence so it stays put. */}
+                {/* Image — AnimatePresence mode="wait" so only the image
+                    swaps with animation; the capsule stays put. */}
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={lightboxImg.src}
@@ -2018,64 +1340,26 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     exit={{ opacity: 0, y: -20, scale: 0.98 }}
                     transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
                     className={cn(
-                      // ── Image wrapper (UNIFIED: mobile = desktop) ──
-                      // `inline-block` + `overflow-hidden` + `rounded-2xl`
-                      // on ALL breakpoints. The width strategy differs by
-                      // project type:
-                      //
-                      // - DevSolutions: `w-full` → the wrapper fills the
-                      //   overlay width. The inner container div uses
-                      //   `flex items-center justify-center` to center the
-                      //   image within. This is needed because DevSol has
-                      //   an inner container that manages the 16:9 frame
-                      //   or the landscape image slot.
-                      //
-                      // - Non-DevSolutions: `w-auto` → the wrapper shrinks
-                      //   to the image's width on ALL breakpoints (previously
-                      //   mobile used `max-sm:w-full` which made the wrapper
-                      //   100vw wide, leaving the `w-auto` image left-aligned
-                      //   instead of centered). Now the overlay's
-                      //   `items-center` centers the wrapper (and thus the
-                      //   image) horizontally on ALL breakpoints — mobile
-                      //   matches desktop.
+                      // ── Image wrapper ── `w-full` for DevSolutions
+                      // (inner container centers the 16:9 frame); `w-auto`
+                      // otherwise so the overlay's items-center centers it.
                       "relative inline-block rounded-2xl overflow-hidden",
                       isDevSolutions ? "w-full" : "w-auto"
                     )}
                     ref={imageWrapperRef}
-                    // NOTE: Mouse enter/move/leave handlers used to live here
-                    // but have been MOVED to the overlay (the parent
-                    // motion.div). This is intentional — we want the X close
-                    // button to reappear when the mouse moves ANYWHERE in the
-                    // lightbox (including over the dark background around the
-                    // image), not just over the image itself. The overlay's
-                    // handlers catch mousemove events that bubble up from the
-                    // image wrapper too, so behavior is fully preserved with
-                    // a single source of truth.
+                    // NOTE: mouse enter/move handlers live on the overlay
+                    // (parent) so the X shows on movement anywhere in the
+                    // lightbox, not just over the image.
                   >
-                    {/* Skeleton placeholder while the lightbox image loads.
-                        Shown ONLY for non-DevSolutions projects. DevSolutions
-                        has its own skeleton inside its branch (below) that
-                        matches its taller image wrapper — rendering both at
-                        once caused a double-skeleton bug. */}
+                    {/* Skeleton while the lightbox image loads. Shown ONLY
+                        for non-DevSolutions (DevSolutions has its own —
+                        rendering both caused a double skeleton). */}
                     {!isDevSolutions && (lightboxImgLoaded ? null : (
-                      /* ── Non-Dev-Solutions skeleton — 9:16 vertical (UNIFIED) ──
-                         Always a PORTRAIT rectangle (9:16 = width:height),
-                         matching the dominant shape of the non-Dev-Solutions
-                         gallery images (all portrait, aspectRatio ≈ 0.46).
-
-                         UNIFIED standard (mobile = desktop):
-                         - `h-[calc(100vh-142px)]` → autofill the lightbox's
-                           vertical budget on ALL breakpoints (same as the
-                           actual image).
-                         - `w-auto aspect-[9/16]` → width derives from the
-                           height via the 9:16 ratio.
-                         - `max-w-[calc(100vw-4rem)]` (mobile) / `sm:max-w-
-                           [calc(100vw-8rem)]` (desktop) → horizontal safety
-                           cap (32px / 64px margin each side).
-
-                         On a narrow phone the max-w may cap the width, making
-                         the skeleton shorter than `calc(100vh-142px)` — but
-                         it's still a 9:16 portrait rectangle, centered. */
+                      /* ── Non-Dev-Solutions skeleton — 9:16 portrait ──
+                         Fills the lightbox's vertical budget
+                         (calc(100vh-142px), mobile 112px); width derives
+                         from the 9:16 ratio; max-w caps the width with
+                         32px / 64px side margins. */
                       <div
                         className="skeleton-shimmer rounded-2xl h-[calc(100vh-142px)] max-sm:h-[calc(100vh-112px)] w-auto max-w-[calc(100vw-4rem)] sm:max-w-[calc(100vw-8rem)]"
                         style={{ aspectRatio: lightboxImg.aspectRatio ?? 0.46 }}
@@ -2083,12 +1367,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       />
                     ))}
 
-                    {/* Close button — larger tap target.
-                        On desktop (hover-capable): visible while mouse is
-                        moving over the image, auto-hides after 1s of no
-                        movement, hides on mouse leave.
-                        On mobile (touch-only): always visible via the
-                        [@media(hover:none)] CSS override. */}
+                    {/* Close button — desktop: visible while the mouse is
+                        moving, auto-hides after idle; mobile: always
+                        visible via [@media(hover:none)]. */}
                     <button
                       type="button"
                       onClick={closeLightboxWithStop}
@@ -2101,7 +1382,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         isImgHovered
                           ? "opacity-100"
                           : "opacity-0 pointer-events-none",
-                        // Mobile (touch-only devices): always visible
+                        // Mobile: always visible
                         "[@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto"
                       )}
                       aria-label={t("portfolio.modal.close")}
@@ -2109,33 +1390,14 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       <X className="h-5 w-5" />
                     </button>
 
-                    {/* "Double-tap to reset" hint — pill at BOTTOM-center.
-                        Shows 8s after the user zooms in (zoom > 1) and
-                        auto-hides 3s later, so it acts as a gentle late
-                        reminder rather than an immediate popup. Driven by
-                        `zoomResetHintVisible`.
-
-                        Positioned at BOTTOM-center (matches the scroll
-                        hint's position pattern, on the opposite side from
-                        the X button which is at the top). The scroll hint
-                        and this hint never coexist — the scroll hint only
-                        shows at zoom=1 for tall DevSol images, while this
-                        hint only shows at zoom > 1. pointer-events-none so
-                        it never blocks tap/pan on the image. z-30 so it
-                        sits above the image.
-
-                        STRUCTURE: outer wrapper div handles ABSOLUTE
-                        POSITIONING only (bottom-3, left-0 right-0, flex
-                        justify-center) — it has NO transform. The inner
-                        motion.div handles ALL animation (opacity + y +
-                        scale). Same split as the scroll hint: this avoids
-                        framer-motion's transform pipeline overriding any
-                        CSS translateX used for centering. The wrapper's
-                        `flex justify-center` does the horizontal centering
-                        so the motion.div never needs a transform for
-                        positioning. The `px-16` side padding prevents the
-                        pill from overlapping the X button on narrow
-                        viewports. */}
+                    {/* "Double-tap to reset" hint — pill at bottom-center,
+                        shows 8s after zoom > 1, auto-hides 3s later.
+                        Never coexists with the scroll hint (that shows
+                        only at zoom=1). STRUCTURE: outer wrapper handles
+                        absolute positioning only (no transform); the inner
+                        motion.div handles all animation — avoids
+                        framer-motion's transform pipeline overriding CSS
+                        centering. `px-16` prevents overlap with the X. */}
                     <div className="pointer-events-none absolute bottom-3 left-0 right-0 z-30 flex justify-center px-16">
                       <AnimatePresence>
                         {zoomResetHintVisible && lightboxZoom > 1 && (
@@ -2168,141 +1430,57 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     </div>
 
                     {isDevSolutionsTall ? (
-                      /* ── Tall Dev Solutions lightbox image (16:9 autofill frame) ──
-                         This branch handles ONLY the two TALL Dev Solutions
-                         screenshots (aspectRatio < 1 — image 1 "1-DS Index"
-                         at 0.417 and image 3 "3-Blog page" at 0.719). These
-                         are full-page screenshots that are MUCH taller than
-                         wide, so showing them scaled-to-fit (the default
-                         dev-solutions branch below) makes them too small to
-                         read on screen.
-
-                         Instead, we render them inside a 16:9 "autofill"
-                         frame:
-                           - The frame has aspect-ratio 16/9 and a max-width
-                             derived from the lightbox's vertical budget
-                             (calc(100vh - 142px) × 16/9) so its computed
-                             height never exceeds calc(100vh - 142px).
-                           - The image is rendered `w-full h-auto` inside an
-                             inner scroll container — its natural width fills
-                             the frame, and its natural height (much taller
-                             than the frame) overflows.
-                           - The inner container is `overflow-y-auto` +
-                             `scrollbar-none`, so the user can scroll
-                             VERTICALLY through the screenshot. The frame's
-                             `overflow-hidden` crops the height.
-                           - `overscroll-contain` + `touch-action: pan-y`
-                             keep the scroll inside the frame on mobile
-                             without chaining to the overlay.
-
-                         A "scroll" hint (text + chevron-down icon) slides
-                         IN at the bottom-center of the frame 1.5s after
-                         the lightbox opens, and slides OUT softly
-                         downward (drifts out instead of snapping) as
-                         soon as the user starts scrolling inside the
-                         frame. */
+                      /* ── Tall Dev Solutions lightbox image ──
+                         Tall screenshots (aspectRatio < 1) in a 16:9
+                         "autofill" frame: image fills the frame width,
+                         overflows height, user scrolls vertically
+                         (overflow-y-auto + overscroll-contain +
+                         touch-action: pan-y on the scroll frame).
+                         A "scroll" hint slides in 1.5s after open and
+                         out on first scroll. */
                       <div
                         className={cn(
                           "relative rounded-2xl overflow-hidden bg-black",
-                          // ── UNIFIED (mobile = desktop) ──
-                          // HEIGHT-BOUND 16:9 frame that FILLS the lightbox's
-                          // vertical budget exactly on ALL breakpoints:
-                          //   - h-[calc(100vh-142px)] fixes the height to the
-                          //     same standard used by the other DevSolutions
-                          //     branch (142px = 24px top + 24px bottom overlay
-                          //     padding + ~94px capsule wrapper).
-                          //   - aspect-video derives the width from the height:
-                          //     width = height × 16/9.
-                          //   - max-w-[calc(100vw-3rem)] is a SAFETY CAP for
-                          //     narrow viewports (mobile or narrow desktop) so
-                          //     the frame never overflows horizontally. When
-                          //     max-w kicks in, the frame becomes narrower than
-                          //     16:9, but the HEIGHT still fills the vertical
-                          //     budget — which is what matters for the user's
-                          //     "autofill the height" requirement. The image
-                          //     inside (w-full h-auto) still overflows
-                          //     vertically and scrolls.
-                          //
-                          // ── Mobile height override ──
-                          // `max-sm:h-[calc(100vh-112px)]` adjusts the mobile
-                          // height to match the mobile padding budget:
-                          //   20px (pt-5) + 16px (pb-4) + 80px (capsule wrapper)
-                          //   = 116px non-image space on mobile.
-                          // Without this override, the image would reserve 142px
-                          // (the desktop budget) on mobile, leaving 26px of free
-                          // space that `my-auto` redistributes as 13px top +
-                          // 13px bottom — defeating the user's explicit
-                          // 20px-top / 16px-bottom padding spec. With the
-                          // override, the image fills exactly the available
-                          // mobile space, my-auto has nothing to distribute,
-                          // and the padding values (20px / 16px) become the
-                          // actual viewport-edge-to-image margins.
-                          //
-                          // Previously mobile used `max-sm:w-full
-                          // max-sm:aspect-video` (width-bound) which made the
-                          // frame SHORT on mobile (e.g., 352×198px on a 400×800
-                          // phone) — different from desktop. Now mobile matches
-                          // desktop exactly: height-bound on all breakpoints,
-                          // so the frame is tall (e.g., 352×658px on the same
-                          // phone) and the user can scroll through the full
-                          // screenshot vertically.
+                          // ── Height-bound 16:9 frame ── height fills the
+                          // lightbox's vertical budget (142px desktop /
+                          // 112px mobile reserved space); aspect-video
+                          // derives the width; max-w is a safety cap for
+                          // narrow viewports (height still fills).
                           "h-[calc(100vh-142px)] aspect-video max-w-[calc(100vw-3rem)] max-sm:h-[calc(100vh-112px)]"
                         )}
                       >
                         {/* Scrollable inner container — holds the
-                            full-height image and lets the user pan
-                            vertically. The ref is used to reset
-                            scrollTop on image change (see useEffect
-                            above). */}
+                            full-height image; ref resets scrollTop on
+                            image change. */}
                         <div
                           ref={lightboxScrollFrameRef}
-                          // Keep the browser's native wheel scrolling inside
-                          // this frame. Stopping propagation prevents the
-                          // lightbox/Body from receiving the event, while
-                          // intentionally preserving the browser default.
+                          // Keep native wheel scrolling inside this frame.
                           onWheel={(e) => e.stopPropagation()}
                           onScroll={(e) => {
-                            // Only dismiss the hint when the user has
-                            // scrolled MORE than 5px. This 5px threshold
-                            // filters out sub-pixel scroll adjustments
-                            // that some browsers fire during reflow /
-                            // scroll-anchoring / layout recalculation
-                            // when the tall image loads and changes the
-                            // container's scrollHeight. Without this
-                            // threshold, a spurious 0→1px scroll event
-                            // could dismiss the hint immediately after
-                            // the 1.5s timer reveals it.
+                            // Dismiss the hint only after > 5px of scroll —
+                            // filters sub-pixel adjustments from reflow /
+                            // scroll-anchoring when the image loads.
                             if (e.currentTarget.scrollTop > 5) {
                               setScrollHintVisible(false);
                             }
                           }}
                           style={{
-                            // Disable CSS scroll anchoring. When the
-                            // tall image loads and its height jumps from
-                            // 0 to very tall, Chrome's scroll-anchoring
-                            // feature may try to adjust scrollTop to
-                            // keep a "stable" anchor point — which can
-                            // fire a spurious scroll event and dismiss
-                            // the hint. `overflow-anchor: none` tells
-                            // the browser NOT to perform any anchor
-                            // adjustment on this container.
+                            // Disable CSS scroll anchoring — Chrome's
+                            // anchor adjustment when the tall image loads
+                            // can fire a spurious scroll event that
+                            // dismisses the hint.
                             overflowAnchor: "none",
                           }}
                           className={cn(
                             "absolute inset-0 overflow-y-auto scroll-smooth overscroll-contain scrollbar-none",
-                            // `touch-action: pan-y` on the scroll frame allows
-                            // vertical scrolling (for the tall image when
-                            // zoom=1) but blocks native pinch-zoom — the
-                            // <img> inside has its own `touch-action: none`
-                            // for JS-based pinch-zoom + pan. Touches on the
-                            // image use the image's touch-action, not the
-                            // frame's.
+                            // `touch-action: pan-y` on the frame allows
+                            // vertical scrolling but blocks native
+                            // pinch-zoom; the <img> has its own
+                            // `touch-action: none` for JS pinch/pan.
                             "[touch-action:pan-y]"
                           )}
                         >
-                          {/* Skeleton placeholder while the tall
-                              image loads. Spans the full frame so
-                              the user sees a uniform shimmer. */}
+                          {/* Skeleton while the tall image loads. */}
                           {lightboxImgLoaded ? null : (
                             <div
                               className="skeleton-shimmer absolute inset-0 rounded-2xl"
@@ -2310,87 +1488,42 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             />
                           )}
                           <img
-                            // w=1920 (NOT 828) — matches the non-tall lightbox
-                            // branch. The tall image is rendered `w-full` inside
-                            // a frame of `aspect-video h-[calc(100vh-142px)]`,
-                            // which on a 1920×1080 desktop is ~1668px wide. The
-                            // old value w=828 forced a 2× upscale at display time
-                            // → visible blur on images 1 and 3. w=1920 gives a
-                            // 1:1 source-to-display match on standard desktops
-                            // and only a slight upscale on retina, which is
-                            // visually equivalent to the non-tall images.
-                            //
-                            // Memory note: a 5760×13820 source at w=1920
-                            // produces a 1920×4608 variant (~35MB decoded
-                            // bitmap). That is 5.4× the 6.5MB of the old
-                            // w=828 variant, but still ~9× smaller than the
-                            // raw 320MB source — well within budget for a
-                            // single lightbox image.
+                            // w=1920 (NOT 828) — the frame is ~1668px wide on
+                            // a 1920×1080 desktop; w=828 forced a 2× upscale
+                            // → visible blur. Still ~9× smaller than the raw
+                            // 320MB source bitmap.
                             src={optimizedSrc(lightboxImg.src, 1920, 80)}
                             alt={tt(lightboxImg.alt)}
-                            // loading=eager + decoding=async: the lightbox
-                            // image is the focal point the user just clicked
-                            // to see, so it should start loading IMMEDIATELY
-                            // (eager, not lazy). But decoding runs async so the
-                            // main thread stays free for the entrance animation
-                            // — the browser will fire `onLoad` once decode is
-                            // complete, which flips `lightboxImgLoaded` to true
-                            // and fades the image in.
-                            //
-                            // fetchPriority="high" tells the browser this is
-                            // the most important request on the page right now,
-                            // so it should be prioritized over the gallery
-                            // thumbnails that may still be loading in the
-                            // background.
+                            // eager + async decode + high priority: the
+                            // lightbox image is the focal point; async
+                            // decoding keeps the main thread free for the
+                            // entrance animation.
                             loading="eager"
                             decoding="async"
                             // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                             fetchPriority="high"
                             className={cn(
-                              // w-full → image fills the frame's
-                              //          width.
-                              // h-auto → image renders at its
-                              //          natural (very tall) height,
-                              //          which overflows the frame
-                              //          and creates scrollable
-                              //          content.
-                              // block → removes inline-img
-                              //         baseline gap.
+                              // w-full → fills the frame width; h-auto →
+                              // natural (tall) height overflows and creates
+                              // scrollable content; block → no baseline gap.
                               "w-full h-auto block transition-opacity duration-300",
                               lightboxImgLoaded ? "opacity-100" : "opacity-0"
                             )}
                             draggable={false}
-                            // ── Pinch-zoom + pan (mobile) ──
-                            // touch-action: none tells the browser NOT to
-                            // handle any touch gesture natively, so JS
-                            // receives all pointer events for pinch/pan.
-                            // The transform applies zoom + pan; when zoom=1
-                            // and pan={0,0}, the transform is a no-op.
+                            // ── Pinch-zoom + pan ── touch-action: none →
+                            // JS receives all pointer events; the transform
+                            // is a no-op at zoom=1, pan={0,0}.
                             style={{
                               touchAction: "none",
-                              // ── GPU-layer optimization ──
-                              // When zoom=1 and pan={0,0}, use
-                              // `transform: "none"` instead of the no-op
-                              // `translate(0px,0px) scale(1)`. Both are
-                              // visually identical, but `transform: "none"`
-                              // does NOT promote the element to a GPU
-                              // compositor layer (per CSS spec: only non-
-                              // `none` transform values create a stacking
-                              // context / GPU layer). For this very TALL
-                              // Dev Solutions lightbox image (displayed at
-                              // the frame's full width — ~1668px on a
-                              // 1920×1080 desktop, larger on retina), this
-                              // saves GPU texture memory and lets the
-                              // browser use full-quality resampling on the
-                              // main compositor layer (instead of bilinear
-                              // texture filtering on the GPU layer, which
-                              // can produce a subtle blur on heavily
-                              // downscaled images).
-                              // The transition from `none` → `scale(1.8)`
-                              // on double-tap zoom is still animated (CSS
-                              // treats `none` as the identity transform for
-                              // interpolation purposes, so the transition
-                              // works correctly).
+                              // ── GPU-layer optimization ── use
+                              // `transform: "none"` (not a no-op
+                              // translate/scale) at zoom=1 so the element
+                              // is NOT promoted to a GPU layer — full-
+                              // quality resampling on the main compositor
+                              // layer, no subtle blur on heavy downscale.
+                              // The `none` → `scale()` transition on
+                              // double-tap still animates (CSS interpolates
+                              // `none` as identity).
                               transform:
                                 lightboxZoom !== 1 ||
                                 lightboxPan.x !== 0 ||
@@ -2398,13 +1531,8 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                                   ? `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`
                                   : "none",
                               transformOrigin: "center center",
-                              // Smooth transition for double-tap zoom. Only
-                              // active while `zoomAnimating` is true (set by
-                              // `onZoomDoubleTap`, auto-reset after 500ms).
-                              // During manual pinch/pan, no transition so
-                              // the transform tracks the fingers 1:1.
-                              // 0.45s + easeOutExpo gives a deliberate,
-                              // camera-lens-like zoom feel.
+                              // Smooth transition only while `zoomAnimating`
+                              // (double-tap); manual pinch/pan tracks 1:1.
                               transition: zoomAnimating
                                 ? "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)"
                                 : "none",
@@ -2427,36 +1555,13 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                           />
                         </div>
 
-                        {/* Scroll hint — text + chevron-down icon.
-                            Slides IN at the bottom-center of the frame
-                            1.5s after the lightbox opens (gated by
-                            `scrollHintVisible`), and slides OUT softly
-                            downward as soon as the user scrolls.
-
-                            Animation feel: SOFT. Long duration (0.7s),
-                            easeOutQuart curve, subtle scale (0.96↔1)
-                            for a gentle "pop" without snap, and a SMALL
-                            exit movement (y:24) so the hint drifts out
-                            instead of shooting off-screen.
-
-                            STRUCTURE: The outer wrapper div handles
-                            ABSOLUTE POSITIONING only (bottom-6, left-0
-                            right-0, flex justify-center) — it has NO
-                            transform. The inner motion.div handles ALL
-                            animation (opacity + y + scale). This split
-                            is critical: if we put `left-1/2
-                            -translate-x-1/2` on the motion.div, the
-                            CSS translateX would be OVERRIDDEN by
-                            framer-motion's transform pipeline (which
-                            combines y + scale into a single transform),
-                            breaking horizontal centering. By keeping
-                            positioning on the wrapper and animation on
-                            the child, the two never collide.
-
-                            pointer-events-none on the wrapper so it
-                            never blocks scroll/click on the image. z-30
-                            so it sits above the image. text-shadow
-                            gives legibility against any background. */}
+                        {/* Scroll hint — slides in at bottom-center 1.5s
+                            after open (soft animation, gentle exit drift).
+                            STRUCTURE: outer wrapper handles positioning
+                            only (no transform); inner motion.div handles
+                            all animation — otherwise framer-motion's
+                            transform pipeline would override CSS
+                            translateX centering. */}
                         <div className="pointer-events-none absolute bottom-6 left-0 right-0 z-30 flex justify-center">
                           <AnimatePresence>
                             {scrollHintVisible && (
@@ -2509,36 +1614,16 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         </div>
                       </div>
                     ) : isDevSolutions ? (
-                      /* ── Dev Solutions non-tall lightbox image (UNIFIED) ──
-                         Landscape screenshots (ratio > 1). Same centering
-                         + sizing standard as non-Dev-Solutions images:
-                         image is capped at `max-h-[calc(100vh-142px)]` so
-                         it ALWAYS fits the viewport alongside the capsule.
-
-                         Container (UNIFIED — mobile = desktop):
-                         - `h-[calc(100vh-142px)]` → fills the vertical
-                           budget on ALL breakpoints so the image area is
-                           consistent across all Dev Solutions slides.
-                         - Previously mobile had NO fixed height (shrank
-                           to fit the image), which made mobile different
-                           from desktop. Now mobile matches desktop: same
-                           fixed height, same centering.
-
-                         `flex items-center justify-center` centers the
-                         image horizontally AND vertically within the
-                         container on all breakpoints. */
+                      /* ── Dev Solutions non-tall lightbox image ──
+                         Landscape screenshots (ratio > 1). Fixed-height
+                         container fills the vertical budget on all
+                         breakpoints; `flex items-center justify-center`
+                         centers the image within. */
                       <div className="relative w-full flex items-center justify-center overflow-hidden rounded-2xl h-[calc(100vh-142px)] max-sm:h-[calc(100vh-112px)]">
                         {lightboxImgLoaded ? null : (
-                          /* ── Non-tall Dev Solutions skeleton — 16:9 (UNIFIED) ──
-                             LANDSCAPE rectangle (16:9), matching the
-                             tall-image frame's shape. Same height-bound
-                             standard on ALL breakpoints:
-                             - `h-[calc(100vh-142px)]` → fill height.
-                             - `max-sm:h-[calc(100vh-112px)]` → mobile budget
-                               (20pt + 16pb + 80 wrapper = 116px).
-                             - `w-auto aspect-video` → width derives from
-                               height via 16:9 ratio.
-                             - `max-w-full` → never overflow horizontally. */
+                          /* ── Non-tall Dev Solutions skeleton — 16:9
+                             landscape; height-bound on all breakpoints,
+                             width derived from 16:9, max-w-full. */
                           <div
                             className="skeleton-shimmer rounded-2xl h-[calc(100vh-142px)] max-sm:h-[calc(100vh-112px)] w-auto aspect-video max-w-full"
                             aria-hidden="true"
@@ -2547,50 +1632,28 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         <img
                           src={optimizedSrc(lightboxImg.src, 1920, 80)}
                           alt={tt(lightboxImg.alt)}
-                          // loading=eager + decoding=async: the lightbox image
-                          // is the focal point the user clicked to see. Eager
-                          // loading starts the request immediately; async
-                          // decoding keeps the main thread free for the entrance
-                          // animation. w=1920 covers full-HD displays.
+                          // eager + async decode + high priority; w=1920
+                          // covers full-HD displays.
                           loading="eager"
                           decoding="async"
                           // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                           fetchPriority="high"
                           className={cn(
-                            // ── Non-tall DevSol image (UNIFIED) ──
-                            // Mobile: `max-w-[calc(100vw-4rem)] w-auto h-auto`
-                            // → capped at width (32px margin each side), natural
-                            // height. The container has no fixed height on
-                            // mobile so it shrinks to fit — no empty space.
-                            // Desktop: `sm:max-h-full sm:max-w-[calc(100vw-8rem)]`
-                            // → capped at container height (calc(100vh-142px))
-                            // and 64px horizontal margin.
+                            // ── Non-tall DevSol image ── mobile: capped at
+                            // width (32px margins), natural height; desktop:
+                            // capped at container height and 64px margins.
                             "max-w-[calc(100vw-4rem)] w-auto h-auto block rounded-2xl transition-opacity duration-300 sm:max-h-full sm:max-w-[calc(100vw-8rem)]",
                             lightboxImgLoaded ? "opacity-100 relative z-10" : "absolute inset-0 opacity-0"
                           )}
                           draggable={false}
-                          // ── Pinch-zoom + pan (mobile) ──
-                          // Smooth transition for double-tap zoom — same
-                          // logic as the tall-image variant above. Only
-                          // active while `zoomAnimating` is true so manual
-                          // pinch/pan still tracks fingers 1:1.
+                          // ── Pinch-zoom + pan ── same logic as the
+                          // tall-image variant above.
                           style={{
                             touchAction: "none",
-                            // ── GPU-layer optimization ──
-                            // When zoom=1 and pan={0,0}, use
-                            // `transform: "none"` instead of the no-op
-                            // `translate(0px,0px) scale(1)`. Both are
-                            // visually identical, but `transform: "none"`
-                            // does NOT promote the element to a GPU
-                            // compositor layer (per CSS spec: only non-
-                            // `none` transform values create a stacking
-                            // context / GPU layer). This saves GPU texture
-                            // memory and lets the browser use full-quality
-                            // resampling on the main compositor layer.
-                            // The transition from `none` → `scale(1.8)` on
-                            // double-tap zoom is still animated (CSS treats
-                            // `none` as the identity transform for
-                            // interpolation purposes).
+                            // ── GPU-layer optimization ── `transform:
+                            // "none"` at zoom=1 avoids a GPU layer and
+                            // keeps full-quality resampling; the `none`
+                            // → `scale()` transition still animates.
                             transform:
                               lightboxZoom !== 1 ||
                               lightboxPan.x !== 0 ||
@@ -2623,44 +1686,24 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       <img
                         src={optimizedSrc(lightboxImg.src, 1920, 80)}
                         alt={tt(lightboxImg.alt)}
-                        // loading=eager + decoding=async: the lightbox image
-                        // is the focal point the user clicked to see. Eager
-                        // loading starts the request immediately; async
-                        // decoding keeps the main thread free for the entrance
-                        // animation. w=1920 covers full-HD displays.
+                        // eager + async decode + high priority; w=1920
+                        // covers full-HD displays.
                         loading="eager"
                         decoding="async"
                         // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                         fetchPriority="high"
                         className={cn(
-                          // ── Non-Dev-Solutions image (UNIFIED standard) ──
-                          // Mobile = desktop: the image is capped at
-                          // `max-h-[calc(100vh-142px)]` on ALL breakpoints so
-                          // it ALWAYS fits in the viewport alongside the capsule
-                          // — NO overlay scroll, NO internal image scroll.
-                          // 142px = 24px top + 24px bottom overlay padding +
-                          // ~94px capsule wrapper (20+58+16).
-                          //
-                          // `w-auto` lets the width derive from the capped
-                          // height (portrait images end up narrow, centered).
-                          //
-                          // `max-w-[calc(100vw-4rem)]` (mobile) /
-                          // `sm:max-w-[calc(100vw-8rem)]` (desktop) = horizontal
-                          // safety cap (32px / 64px margin each side).
-                          //
-                          // Previously mobile used `w-full` which made tall
-                          // portrait images overflow the viewport — pushing the
-                          // capsule off-screen and breaking centering. Now mobile
-                          // matches desktop: capped height, auto width, centered.
+                          // ── Non-Dev-Solutions image ── capped at
+                          // max-h-[calc(100vh-142px)] (mobile 112px) so it
+                          // always fits alongside the capsule; `w-auto`
+                          // derives width from the capped height; max-w caps
+                          // with 32px / 64px side margins.
                           "h-auto w-auto block max-h-[calc(100vh-142px)] max-sm:max-h-[calc(100vh-112px)] max-w-[calc(100vw-4rem)] sm:max-w-[calc(100vw-8rem)] transition-opacity duration-300",
                           lightboxImgLoaded ? "opacity-100" : "absolute inset-0 opacity-0"
                         )}
                         draggable={false}
-                        // ── Pinch-zoom + pan (mobile) ──
-                        // Smooth transition for double-tap zoom — same
-                        // logic as the tall-image variant above. Only
-                        // active while `zoomAnimating` is true so manual
-                        // pinch/pan still tracks fingers 1:1.
+                        // ── Pinch-zoom + pan ── same logic as the
+                        // tall-image variant above.
                         style={{
                           touchAction: "none",
                           transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`,
@@ -2689,67 +1732,29 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   </motion.div>
                 </AnimatePresence>
 
-                {/* Capsule — arrows + counter.
-                    Visibility is driven by `lightboxReady` (not per-image
-                    `lightboxImgLoaded`) so the capsule does NOT unmount/
-                    remount on each slide change. It appears once the first
-                    image has loaded and stays mounted for the entire
-                    lightbox session. Only the counter number updates
-                    (a text change, not an animation).
-
-                    The wrapper around the capsule reserves 20px of padding
-                    on all sides and stops pointer events from propagating
-                    to the overlay's close-on-tap handler. This way, taps
-                    NEAR the capsule (within 20px) do NOT close the lightbox
-                    — only taps on the actual empty overlay background do.
-
-                    The wrapper has NO margin-top (mt-0) — the 20px gap
-                    between the image and the capsule comes entirely from
-                    the wrapper's top padding. This keeps the gap at exactly
-                    20px (the safe-area padding doubles as the visual gap). */}
+                {/* Capsule — arrows + counter. Visibility driven by
+                    `lightboxReady` (not per-image `lightboxImgLoaded`) so
+                    it doesn't unmount/remount per slide; only the counter
+                    text updates. The wrapper's 20px padding doubles as the
+                    gap above and stops taps NEAR the capsule from
+                    closing the lightbox. */}
                 {lightboxTotal > 1 && (
                   <div
-                    // ── Capsule wrapper (UNIFIED gap, mobile-tighter bottom) ──
-                    // `mt-0` + `p-5` keeps a 20px safe-area around the capsule
-                    // on all breakpoints (also doubles as the visual gap above
-                    // the capsule). On MOBILE, `max-sm:pb-3` reduces the bottom
-                    // padding from 20px → 12px (8px less) so the capsule sits a
-                    // touch closer to the bottom edge of the lightbox — this
-                    // matches the user's "reduce bottom margin by 8px" request
-                    // and keeps mobile visually balanced with desktop.
+                    // ── Capsule wrapper ── `mt-0` + `p-5` = 20px safe area
+                    // doubling as the gap above; `max-sm:pb-3` tightens the
+                    // bottom padding on mobile.
                     className="mt-0 p-5 max-sm:pb-3"
                     onPointerDown={stopPropagation}
                     onPointerUp={stopPropagation}
                     onClick={stopPropagation}
                   >
-                    {/* ── Capsule (slide nav) — 48px tall on mobile, 58px on desktop ──
-                        The capsule groups prev/next arrows + slide counter.
-
-                        Mobile (max-sm): `max-sm:h-12 max-sm:py-0` forces the
-                        capsule to exactly 48px tall (h-12 = 3rem = 48px) with
-                        NO vertical padding — the h-11 (44px) buttons sit
-                        centered with 2px breathing room above/below. This
-                        matches the user's "slide height 48px on mobile"
-                        request and gives the mobile lightbox a tighter,
-                        more thumb-friendly nav bar.
-
-                        Desktop (sm+): keeps `py-1.5` (6px+6px) so the capsule
-                        is 58px tall (44px button + 12px padding + 2px border)
-                        — the original comfortable desktop size. Width stays
-                        `w-64` (256px) on all breakpoints.
-
-                        ── RTL-aware arrow direction ──
-                        The capsule itself is ALWAYS `dir="ltr"` so the
-                        ChevronLeft icon stays on the visual LEFT and the
-                        ChevronRight icon stays on the visual RIGHT — what
-                        changes between LTR and RTL is which ACTION each
-                        chevron triggers:
-                          - LTR (English): ChevronLeft → previous, ChevronRight → next
-                          - RTL (Persian): ChevronLeft → next, ChevronRight → previous
-                        This matches the Persian reading flow (right-to-left):
-                        "back/previous" is to the right, "forward/next" is to
-                        the left. The chevron icon always points in the
-                        direction the user is conceptually moving. */}
+                    {/* ── Capsule (slide nav) ── 48px tall on mobile
+                        (max-sm:h-12), 58px on desktop; w-64 everywhere.
+                        ── RTL-aware arrows ── the capsule is ALWAYS
+                        dir="ltr" so ChevronLeft stays visually LEFT;
+                        what changes per locale is the ACTION: LTR
+                        ChevronLeft=prev, RTL ChevronLeft=next (Persian
+                        reading flow: "previous" is to the right). */}
                     {lightboxReady ? (
                     <div dir="ltr" className="flex w-64 items-center justify-between rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm max-sm:h-12 max-sm:py-0">
                       <button
@@ -2764,38 +1769,12 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       </button>
                       <span className="mx-2 h-5 w-px bg-white/20" />
                       {/* ── Slide counter — locale-aware direction ──
-                          The capsule container itself stays `dir="ltr"` so
-                          the chevron icons don't mirror (chevron-left stays
-                          on the visual left, chevron-right stays on the
-                          visual right). BUT the counter span inside takes
-                          its direction from the active locale so users read
-                          the counter in their natural flow:
-
-                          - Persian (RTL): `dir="rtl"`
-                              Visual LTR:  [9] [از] [1]   (total left, current right)
-                              RTL reading: 1 → از → 9     ✓ "1 از 9"
-                              (Persian readers scan right-to-left, so the
-                              current slide number sits on the RIGHT where
-                              they start reading.)
-
-                          - English (LTR): `dir="ltr"`
-                              Visual LTR:  [1] [of] [9]
-                              LTR reading: 1 → of → 9     ✓ "1 of 9"
-
-                          Previously, forcing `dir="ltr"` for both locales
-                          produced visual `1 از 9` for Persian, which
-                          Persian readers scanning right-to-left perceived
-                          as "9 از 1" — the opposite of what they expected.
-
-                          The `<bdi>` wrappers on each number keep the
-                          Unicode bidi algorithm from reordering the
-                          numbers relative to each other or to the
-                          separator word — each number is an isolated
-                          run that takes its direction from the parent
-                          `dir`, but cannot pull neighboring runs into
-                          its own bidi level. This makes the visual
-                          order deterministic regardless of which digits
-                          (Persian or Latin) appear. */}
+                          The counter span takes its dir from the locale so
+                          users read it naturally: Persian `dir="rtl"` puts
+                          the current number on the RIGHT ("1 از 9");
+                          English `dir="ltr"` gives "1 of 9". `<bdi>`
+                          wrappers isolate each number's bidi run so the
+                          visual order is deterministic. */}
                       <span
                         dir={locale === "fa" ? "rtl" : "ltr"}
                         className="flex items-center gap-2 text-sm font-medium text-white/90"
@@ -2851,70 +1830,16 @@ function Section({
   );
 }
 
-/* ── DevSolutionsThumb ────────────────────────────────────────────────
-   Optimized gallery thumbnail for the Dev Solutions project.
-
-   WHY THIS EXISTS — SmartImage (used by all other projects' gallery
-   thumbnails) loads the RAW source URL directly into an <img>. For most
-   projects the source images are reasonably sized, so this is fine. But
-   Dev Solutions has two EXTREMELY heavy screenshots:
-     - Image 1 "1-DS Index":  5760×13820 = 1.5MB (decoded bitmap ~320MB!)
-     - Image 3 "3-Blog page": 5760×8012  = 775KB (decoded bitmap ~185MB)
-   Loading these raw for a ~240px gallery thumbnail forced the browser to
-   download 1.5MB AND allocate a 320MB decoded bitmap PER THUMBNAIL. The
-   first batch of 3 thumbnails hit the modal with ~480MB of bitmap work
-   simultaneously — the root cause of the "modal doesn't render properly
-   with heavy images" bug the user reported.
-
-   FIX — route through /_next/image?url=...&w=640&q=80 instead. Next.js's
-   built-in image optimizer:
-     1. Reads the source ONCE on the server (cached after first request).
-     2. Resizes to w=640 preserving aspect ratio (image 1 becomes 640×1535).
-     3. Re-encodes as webp at q=80.
-     4. Returns ~80KB instead of 1.5MB.
-   The decoded browser bitmap drops from 320MB → ~4MB (80× reduction).
-
-   VISUAL IDENTITY — preserves EXACTLY the same appearance as the old
-   SmartImage path:
-     - Same 16:9 cell (set by the parent div's `aspect-[16/9]`)
-     - Same `object-cover` crop behavior (image fills the cell)
-     - Same `object-top` vertical alignment for tall portrait screenshots
-       (so the preview starts from the TOP of the screenshot, not the
-       middle) — controlled by `isTallPortrait`
-     - Same `transition-transform duration-500 group-hover/img:scale-[1.02]`
-       hover zoom (matches the rest of the gallery)
-     - Same skeleton-shimmer placeholder while loading
-     - Same fade-in on load (opacity-0 → opacity-100)
-   The only difference is the underlying bytes — visually identical.
-
-   HYDRATION-GAP FIX — same pattern as SmartImage: in a useEffect on mount,
-   check if the <img> is already complete (from browser cache). If so, flip
-   to loaded immediately and call onLoad so the parent's batch counter
-   advances. Without this, navigating away from the modal and back would
-   leave already-cached images stuck showing the skeleton placeholder
-   because onLoad wouldn't fire for a cache hit.
-
-   WIDTH CHOICE — w=640 was chosen because:
-     - Desktop gallery is `grid-cols-3` inside a `max-w-3xl` (768px) modal
-       → each cell is ~240px wide. On 2× retina, that's 480px of source
-       data needed. w=640 gives 33% retina headroom.
-     - Mobile gallery is `grid-cols-2` inside full viewport width minus
-       padding → each cell is ~180px wide. On 2× retina, that's 360px.
-       w=640 covers this comfortably too.
-     - Going higher (w=828, w=1080) would slightly improve retina quality
-       but increase payload + decode work — counter to the optimization
-       goal. w=640 is the sweet spot.
-
-   MEMOIZATION — wrapped in React.memo so the parent can re-render
-   (e.g. during lightbox pinch-zoom, when `lightboxZoom` / `lightboxPan`
-   update hundreds of times per second) WITHOUT causing this thumbnail
-   to re-render. The thumbnail's only inputs are `src`, `alt`,
-   `isTallPortrait` (all stable per cell), and `onLoad` (stabilized via
-   `makeGalleryOnLoad` in the parent). So React.memo's shallow prop
-   comparison will hit the cache and skip re-rendering entirely. This
-   is critical for the Dev Solutions modal where the heavy thumbnails
-   were previously being re-rendered on every pinch-zoom event.
-*/
+/* ── DevSolutionsThumb ── optimized gallery thumbnail for Dev Solutions.
+   Its source screenshots are extremely heavy (up to 5760×13820, ~320MB
+   decoded bitmap each), so this routes through /_next/image w=640 q=80
+   (server-resized + recompressed → ~4MB decoded) instead of loading the
+   raw URL like SmartImage. Visually identical at thumbnail size: same
+   16:9 cell, object-cover / object-top crop, hover zoom, skeleton,
+   fade-in. Hydration-gap fix: on mount, flip to loaded for
+   already-complete (cached) images so the batch counter advances.
+   React.memo keeps thumbnails from re-rendering during pinch-zoom
+   (onLoad is stabilized via `makeGalleryOnLoad`). */
 const DevSolutionsThumb = React.memo(function DevSolutionsThumb({
   src,
   alt,
@@ -2929,8 +1854,7 @@ const DevSolutionsThumb = React.memo(function DevSolutionsThumb({
   const [loaded, setLoaded] = React.useState(false);
   const imgRef = React.useRef<HTMLImageElement>(null);
 
-  // Hydration gap fix — if the image is already complete (browser cache),
-  // flip to loaded immediately. Mirrors SmartImage's logic.
+  // Hydration gap fix — cached images may already be complete on mount.
   React.useEffect(() => {
     const el = imgRef.current;
     if (el && el.complete && el.naturalWidth > 0) {
@@ -2942,9 +1866,7 @@ const DevSolutionsThumb = React.memo(function DevSolutionsThumb({
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      {/* Skeleton placeholder while loading — same animation as SmartImage.
-          Removed from the DOM once `loaded` is true so it doesn't keep
-          painting behind the image. */}
+      {/* Skeleton while loading; removed from the DOM once loaded. */}
       {!loaded && (
         <div className="absolute inset-0 skeleton-shimmer" aria-hidden="true" />
       )}
@@ -2952,34 +1874,26 @@ const DevSolutionsThumb = React.memo(function DevSolutionsThumb({
         ref={imgRef}
         src={optimizedSrc(src, 640, 80)}
         alt={alt}
-        // Same loading strategy as SmartImage for non-critical images:
-        // lazy + async decode + low priority. The gallery is below the
-        // fold (after cover + overview + tools), so eager loading would
-        // compete with the cover image for bandwidth.
+        // lazy + async decode + low priority — the gallery is below the
+        // fold and must not compete with the cover for bandwidth.
         loading="lazy"
         decoding="async"
         // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         fetchPriority="low"
         draggable={false}
         className={cn(
-          // Mirror SmartImage's non-natural className structure exactly:
-          //   relative + h-full w-full + object-cover
-          // so the 16:9 cell crop behavior is identical.
+          // Same structure as SmartImage (relative + h-full w-full +
+          // object-cover) so the 16:9 crop behavior is identical.
           "relative h-full w-full object-cover",
-          // Hide until loaded, fade in on load — same as SmartImage.
-          // Note: like SmartImage, the `transition-opacity duration-300`
-          // is overridden by the `transition-transform duration-500`
-          // below (Tailwind's transition-transform class wins in CSS
-          // specificity). So the image pops in (no fade) and then
-          // transforms on hover with a 500ms transition. This matches
-          // the existing gallery behavior exactly — no visual change.
+          // Hide until loaded. Note: `transition-transform` below wins
+          // over `transition-opacity`, so the image pops in (no fade) —
+          // matching the existing gallery behavior exactly.
           !loaded && "opacity-0",
           loaded && "opacity-100 transition-opacity duration-300",
           // Hover zoom — same as every other gallery cell.
           "transition-transform duration-500 ease-out group-hover/img:scale-[1.02]",
-          // Vertical alignment for tall portrait screenshots — `object-top`
-          // shows the TOP of the screenshot (the page header) instead of
-          // the middle. Landscape screenshots stay centered (default).
+          // `object-top` shows the TOP of tall portrait screenshots;
+          // landscape stays centered (default).
           isTallPortrait ? "object-top" : ""
         )}
         onLoad={() => {
@@ -2987,9 +1901,7 @@ const DevSolutionsThumb = React.memo(function DevSolutionsThumb({
           onLoad?.();
         }}
         onError={() => {
-          // Treat errors as "done" so the parent's batch counter advances
-          // even if an image fails — otherwise the next batch would never
-          // start, leaving the gallery permanently stuck on a broken batch.
+          // Treat errors as "done" so the batch counter still advances.
           setLoaded(true);
           onLoad?.();
         }}
