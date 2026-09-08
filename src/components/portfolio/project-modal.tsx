@@ -977,7 +977,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         ? { transform: "translateZ(0)", backfaceVisibility: "hidden" as const }
                         : {}),
                     }}
-                    className="relative aspect-[16/9] w-full overflow-hidden rounded-t-[2rem] sm:rounded-t-[2rem]"
+                    className="relative aspect-[16/9] w-full compat-video-frame overflow-hidden rounded-t-[2rem] sm:rounded-t-[2rem]"
                   >
                     <motion.div
                       // Explicit initial/animate. When `coverRevealDone`,
@@ -1177,8 +1177,12 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                       <Section title={t("portfolio.modal.gallery")}>
                       <div dir={locale === "fa" ? "rtl" : "ltr"} className="grid grid-cols-2 items-start gap-2 sm:grid-cols-3 sm:gap-2.5">
                         {project.gallery.map((img, i) => {
+                          const galleryRatio = img.aspectRatio ?? 1.5;
                           const aspectStyle = !isDevSolutions
-                            ? { aspectRatio: String(img.aspectRatio ?? 1.5) }
+                            ? {
+                                aspectRatio: String(galleryRatio),
+                                "--gallery-padding": `${100 / galleryRatio}%`,
+                              }
                             : undefined;
 
                           // ── Progressive batch loading ──
@@ -1200,8 +1204,9 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                             >
                               <div
                                 className={cn(
-                                  "relative w-full overflow-hidden",
-                                  isDevSolutions && "aspect-[16/9]"
+                                  "relative w-full overflow-hidden compat-gallery-frame",
+                                  isDevSolutions && "aspect-[16/9] compat-video-frame",
+                                  isDevSolutions && { "--gallery-padding": "56.25%" }
                                 )}
                                 style={aspectStyle}
                               >
@@ -1234,6 +1239,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                                       aspectRatio={img.aspectRatio}
                                       skeleton
                                       gradientClassName={project.accent}
+                                      className="absolute inset-0"
                                       imgClassName="transition-transform duration-500 ease-out group-hover/img:scale-[1.02]"
                                       onLoad={makeGalleryOnLoad(imageBatch)}
                                     />
@@ -1304,7 +1310,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                   // which we handle in JS on the <img> (touch-action: none).
                   // The overlay itself never scrolls — tall images expose
                   // their own scroll container.
-                  "fixed inset-0 z-[200] flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-hidden overscroll-none scrollbar-none bg-black/50 backdrop-blur-md",
+                  "fixed inset-0 z-[200] flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] compat-lightbox-viewport flex-col items-center pt-6 pb-6 max-sm:pt-5 max-sm:pb-3 pointer-events-auto overflow-hidden overscroll-none scrollbar-none bg-black/50 backdrop-blur-md",
                   "max-sm:[touch-action:pan-y]"
                 )}
               // Stop wheel events from reaching the document, where

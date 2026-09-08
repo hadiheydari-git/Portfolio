@@ -203,6 +203,47 @@
 }
 
 @layer utilities {
+  .compat-square-frame {
+    position: relative;
+    height: 0;
+    padding-bottom: 100%;
+  }
+
+  .compat-video-frame {
+    position: relative;
+    height: 0;
+    padding-bottom: 56.25%;
+  }
+
+  .compat-gallery-frame {
+    position: relative;
+    height: 0;
+    padding-bottom: var(--gallery-padding);
+  }
+
+  .compat-lightbox-viewport {
+    height: 100vh;
+    min-height: 100vh;
+    max-height: 100vh;
+  }
+
+  @supports (aspect-ratio: 1) {
+    .compat-square-frame,
+    .compat-video-frame,
+    .compat-gallery-frame {
+      height: auto;
+      padding-bottom: 0;
+    }
+  }
+
+  @supports (height: 100dvh) {
+    .compat-lightbox-viewport {
+      height: 100dvh;
+      min-height: 100dvh;
+      max-height: 100dvh;
+    }
+  }
+
   /* Glassmorphism — frosted glass effects */
   .glass {
     background: color-mix(in oklch, var(--background) 65%, transparent);

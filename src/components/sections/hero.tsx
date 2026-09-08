@@ -54,7 +54,7 @@ export function Hero() {
       <RevealOnScroll staggerDelay={0.08} className="container-edge grid items-center gap-12 sm:grid-cols-[1.1fr_0.9fr]">
         {/* Visual column — profile image (mobile: first, desktop: right) */}
         <RevealItem className={cn(
-            "relative order-1 w-full mx-auto aspect-square rounded-[2rem] sm:order-2 sm:max-w-sm sm:rounded-[2.5rem]",
+            "relative order-1 w-full mx-auto aspect-square compat-square-frame rounded-[2rem] sm:order-2 sm:max-w-sm sm:rounded-[2.5rem]",
             locale === "en" ? "sm:ml-auto sm:mr-0" : "sm:mr-auto sm:ml-0"
           )}>
           <div className="h-full w-full overflow-hidden rounded-[2rem] border border-black/10 shadow-lifted sm:rounded-[2.5rem]">
