@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Vazirmatn, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -30,18 +30,20 @@ const themeScript = `
 })();
 `;
 
-// Vazirmatn — mandatory font for Persian (RTL) text
-const vazirmatn = Vazirmatn({
+// These are the exact font subsets emitted by the previous Google font build,
+// now served locally so the browser makes no third-party font requests.
+const vazirmatn = localFont({
+  src: "../../public/fonts/f1d25eabcf1db66d-s.p.21se6xk6bxqs6.woff2",
   variable: "--font-vazirmatn",
-  subsets: ["arabic", "latin"],
   display: "swap",
+  preload: true,
 });
 
-// Inter — clean Apple-inspired sans-serif for English (LTR) text
-const inter = Inter({
+const inter = localFont({
+  src: "../../public/fonts/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {

@@ -1,7 +1,6 @@
 "use client";
 
 import { Mail } from "lucide-react";
-import * as si from "simple-icons";
 import { useLanguage } from "@/components/providers/language-provider";
 import { profile } from "@/lib/content";
 
@@ -11,9 +10,8 @@ const TELEGRAM_USERNAME = "Hadiheydari_contact";
 const TELEGRAM_URL = `https://t.me/${TELEGRAM_USERNAME}`;
 
 // Brand SVG icons — real logos.
-// LinkedIn is rendered from an inline SVG path (simple-icons removed
-// LinkedIn in recent versions due to trademark concerns).
-// Telegram is rendered via simple-icons (still available).
+// Both brand logos are rendered from inline SVG paths so the footer does not
+// load a complete icon registry for two small icons.
 // Both use currentColor so they pick up the footer text color and hover state.
 function LinkedInIcon({ className }: { className?: string }) {
   return (
@@ -30,10 +28,6 @@ function LinkedInIcon({ className }: { className?: string }) {
 }
 
 function TelegramIcon({ className }: { className?: string }) {
-  const icon = (si as Record<string, { path: string }>)[
-    "siTelegram"
-  ];
-  if (!icon) return null;
   return (
     <svg
       role="img"
@@ -42,7 +36,7 @@ function TelegramIcon({ className }: { className?: string }) {
       fill="currentColor"
       aria-hidden="true"
     >
-      <path d={icon.path} />
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
     </svg>
   );
 }

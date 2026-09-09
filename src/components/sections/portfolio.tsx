@@ -1,11 +1,18 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { SectionHeading } from "@/components/sections/section-heading";
 import { BentoCard } from "@/components/portfolio/bento-card";
-import { ProjectModal } from "@/components/portfolio/project-modal";
 import { RevealOnScroll, RevealItem } from "@/components/ui/reveal-on-scroll";
 import { projects, type Project } from "@/lib/content";
+
+// The modal is interaction-only and should not be part of the homepage's
+// first-load graph. It is requested when a project is opened.
+const ProjectModal = dynamic(
+  () => import("@/components/portfolio/project-modal").then((module) => module.ProjectModal),
+  { ssr: false }
+);
 
 const PROJECT_ORDER = [
   "dutar-dashboard",
@@ -68,7 +75,7 @@ export function Portfolio() {
         </div>
       </RevealOnScroll>
 
-      <ProjectModal project={active} open={open} onOpenChange={setOpen} />
+      {open && <ProjectModal project={active} open={open} onOpenChange={setOpen} />}
     </section>
   );
 }

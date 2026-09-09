@@ -1,6 +1,35 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Keep the non-primary unicode ranges local as well; the primary subsets are
+   loaded through next/font/local in layout.tsx. */
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/ec8f59eafded4799-s.p.2avnhkksosb5d.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/3be67f396f7d45c3-s.10ayu6ka6csf1.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/1bffadaabf893a1e-s.3-6t-g6q0vh0a.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -69,37 +98,42 @@
   --ring: #b8b5ae;
   --glass-fallback: #f7f7f5;
   --glass-card-fallback: #ffffff;
-  --background: oklch(0.99 0.002 95);
-  --foreground: oklch(0.18 0.004 95);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.004 95);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.004 95);
-  --primary: oklch(0.18 0.004 95);
-  --primary-foreground: oklch(0.99 0.002 95);
-  --secondary: oklch(0.965 0.003 95);
-  --secondary-foreground: oklch(0.18 0.004 95);
-  --muted: oklch(0.965 0.003 95);
-  --muted-foreground: oklch(0.52 0.005 95);
-  --accent: oklch(0.955 0.003 95);
-  --accent-foreground: oklch(0.18 0.004 95);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.003 95);
-  --input: oklch(0.92 0.003 95);
-  --ring: oklch(0.7 0.005 95);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0.002 95);
-  --sidebar-foreground: oklch(0.18 0.004 95);
-  --sidebar-primary: oklch(0.18 0.004 95);
-  --sidebar-primary-foreground: oklch(0.985 0.002 95);
-  --sidebar-accent: oklch(0.965 0.003 95);
-  --sidebar-accent-foreground: oklch(0.18 0.004 95);
-  --sidebar-border: oklch(0.92 0.003 95);
-  --sidebar-ring: oklch(0.7 0.005 95);
+}
+
+@supports (color: oklch(0% 0% 0deg)) {
+  :root {
+    --background: oklch(0.99 0.002 95);
+    --foreground: oklch(0.18 0.004 95);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.18 0.004 95);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.18 0.004 95);
+    --primary: oklch(0.18 0.004 95);
+    --primary-foreground: oklch(0.99 0.002 95);
+    --secondary: oklch(0.965 0.003 95);
+    --secondary-foreground: oklch(0.18 0.004 95);
+    --muted: oklch(0.965 0.003 95);
+    --muted-foreground: oklch(0.52 0.005 95);
+    --accent: oklch(0.955 0.003 95);
+    --accent-foreground: oklch(0.18 0.004 95);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.92 0.003 95);
+    --input: oklch(0.92 0.003 95);
+    --ring: oklch(0.7 0.005 95);
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --sidebar: oklch(0.985 0.002 95);
+    --sidebar-foreground: oklch(0.18 0.004 95);
+    --sidebar-primary: oklch(0.18 0.004 95);
+    --sidebar-primary-foreground: oklch(0.985 0.002 95);
+    --sidebar-accent: oklch(0.965 0.003 95);
+    --sidebar-accent-foreground: oklch(0.18 0.004 95);
+    --sidebar-border: oklch(0.92 0.003 95);
+    --sidebar-ring: oklch(0.7 0.005 95);
+  }
 }
 
 .dark {
@@ -123,37 +157,42 @@
   --ring: #928f87;
   --glass-fallback: #2b2926;
   --glass-card-fallback: #302e2b;
-  --background: oklch(0.16 0.004 95);
-  --foreground: oklch(0.97 0.002 95);
-  --card: oklch(0.205 0.005 95);
-  --card-foreground: oklch(0.97 0.002 95);
-  --popover: oklch(0.205 0.005 95);
-  --popover-foreground: oklch(0.97 0.002 95);
-  --primary: oklch(0.97 0.002 95);
-  --primary-foreground: oklch(0.16 0.004 95);
-  --secondary: oklch(0.265 0.006 95);
-  --secondary-foreground: oklch(0.97 0.002 95);
-  --muted: oklch(0.265 0.006 95);
-  --muted-foreground: oklch(0.7 0.006 95);
-  --accent: oklch(0.275 0.006 95);
-  --accent-foreground: oklch(0.97 0.002 95);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 13%);
-  --ring: oklch(0.6 0.006 95);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0.005 95);
-  --sidebar-foreground: oklch(0.97 0.002 95);
-  --sidebar-primary: oklch(0.97 0.002 95);
-  --sidebar-primary-foreground: oklch(0.205 0.005 95);
-  --sidebar-accent: oklch(0.275 0.006 95);
-  --sidebar-accent-foreground: oklch(0.97 0.002 95);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.6 0.006 95);
+}
+
+@supports (color: oklch(0% 0% 0deg)) {
+  .dark {
+    --background: oklch(0.16 0.004 95);
+    --foreground: oklch(0.97 0.002 95);
+    --card: oklch(0.205 0.005 95);
+    --card-foreground: oklch(0.97 0.002 95);
+    --popover: oklch(0.205 0.005 95);
+    --popover-foreground: oklch(0.97 0.002 95);
+    --primary: oklch(0.97 0.002 95);
+    --primary-foreground: oklch(0.16 0.004 95);
+    --secondary: oklch(0.265 0.006 95);
+    --secondary-foreground: oklch(0.97 0.002 95);
+    --muted: oklch(0.265 0.006 95);
+    --muted-foreground: oklch(0.7 0.006 95);
+    --accent: oklch(0.275 0.006 95);
+    --accent-foreground: oklch(0.97 0.002 95);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 9%);
+    --input: oklch(1 0 0 / 13%);
+    --ring: oklch(0.6 0.006 95);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.205 0.005 95);
+    --sidebar-foreground: oklch(0.97 0.002 95);
+    --sidebar-primary: oklch(0.97 0.002 95);
+    --sidebar-primary-foreground: oklch(0.205 0.005 95);
+    --sidebar-accent: oklch(0.275 0.006 95);
+    --sidebar-accent-foreground: oklch(0.97 0.002 95);
+    --sidebar-border: oklch(1 0 0 / 9%);
+    --sidebar-ring: oklch(0.6 0.006 95);
+  }
 }
 
 @layer base {
@@ -186,12 +225,22 @@
   }
 
   body::-webkit-scrollbar-thumb {
-    background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+    background: rgba(129, 127, 121, 0.35);
     border-radius: 9999px;
   }
 
   body::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
+    background: rgba(129, 127, 121, 0.5);
+  }
+
+  @supports (background: color-mix(in oklch, white, transparent)) {
+    body::-webkit-scrollbar-thumb {
+      background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+    }
+
+    body::-webkit-scrollbar-thumb:hover {
+      background: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
+    }
   }
 
   /* Smooth scrolling with offset for the sticky header */
@@ -226,10 +275,19 @@
     background: var(--selection-bg);
   }
   :root {
-    --selection-bg: oklch(0.18 0.004 95 / 0.22);
+    --selection-bg: rgba(41, 40, 37, 0.22);
   }
   .dark {
-    --selection-bg: oklch(0.97 0.002 95 / 0.26);
+    --selection-bg: rgba(245, 243, 239, 0.26);
+  }
+
+  @supports (color: oklch(0% 0% 0deg)) {
+    :root {
+      --selection-bg: oklch(0.18 0.004 95 / 0.22);
+    }
+    .dark {
+      --selection-bg: oklch(0.97 0.002 95 / 0.26);
+    }
   }
 
   /* Header entrance — NO animation. Any CSS animation with fill-mode
@@ -284,20 +342,6 @@
     }
   }
 
-  /* Glassmorphism — frosted glass effects */
-  .glass {
-    background-color: var(--glass-fallback);
-  }
-  .glass-card {
-    background-color: var(--glass-card-fallback);
-  }
-  /* Hero decorative Bento card — more opaque (less transparent) than the
-     generic .glass-card so it reads as a solid, premium floating tile. */
-  .hero-glass-card {
-    background-color: var(--glass-card-fallback);
-  }
-  /* Header capsule — moved outside @layer utilities because Turbopack's
-     CSS optimizer was stripping backdrop-filter from rules inside @layer. */
 }
 
 /* Header glass effect with very subtle noise texture.
@@ -349,42 +393,89 @@
     0 16px 40px -10px rgba(0, 0, 0, 0.65);
 }
 
-@layer utilities {
+/* ========================================================================
+   Surface glass primitive — shared frosted / elevated panel treatment.
+   Header, contact card, skills cards, experience cards, and section
+   shells all use these classes (or .surface-glass alias).
+
+   Progressive enhancement layers:
+   1. Always: opaque sRGB fallback matching the frosted perceived color.
+   2. backdrop-filter @supports: pre-mixed rgba + blur (no color-mix).
+   3. backdrop-filter + color-mix @supports: token-driven translucency.
+   Rules live outside @layer so Turbopack does not strip backdrop-filter.
+   ======================================================================== */
+.glass {
+  background-color: var(--glass-fallback);
+}
+.glass-card,
+.hero-glass-card,
+.surface-glass {
+  background-color: var(--glass-card-fallback);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    background-color: rgba(247, 247, 245, 0.92);
+  }
+  .glass-card,
+  .surface-glass {
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    background-color: rgba(255, 255, 255, 0.88);
+  }
+  .hero-glass-card {
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    backdrop-filter: saturate(160%) blur(18px);
+    background-color: rgba(255, 255, 255, 0.94);
+  }
+  .dark .glass {
+    background-color: rgba(43, 41, 38, 0.90);
+  }
+  .dark .glass-card,
+  .dark .surface-glass {
+    background-color: rgba(48, 46, 43, 0.78);
+  }
+  .dark .hero-glass-card {
+    background-color: rgba(48, 46, 43, 0.85);
+  }
+  .header-solid {
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    background-color: rgba(252, 252, 250, 0.9);
+  }
+  .dark .header-solid {
+    background-color: rgba(14, 13, 11, 0.9);
+  }
+}
+
+@supports (background: color-mix(in oklch, white, transparent)) {
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass {
       background-color: color-mix(in oklch, var(--background) 65%, transparent);
-      backdrop-filter: saturate(180%) blur(20px);
-      -webkit-backdrop-filter: saturate(180%) blur(20px);
     }
-    .glass-card {
+    .glass-card,
+    .surface-glass {
       background-color: color-mix(in oklch, var(--card) 72%, transparent);
-      backdrop-filter: saturate(180%) blur(24px);
-      -webkit-backdrop-filter: saturate(180%) blur(24px);
     }
     .hero-glass-card {
       background-color: color-mix(in oklch, var(--card) 88%, transparent);
-      backdrop-filter: saturate(160%) blur(18px);
-      -webkit-backdrop-filter: saturate(160%) blur(18px);
     }
     .dark .glass {
       background-color: color-mix(in oklch, var(--background) 55%, transparent);
     }
-    .dark .glass-card {
+    .dark .glass-card,
+    .dark .surface-glass {
       background-color: color-mix(in oklch, var(--card) 55%, transparent);
     }
     .dark .hero-glass-card {
       background-color: color-mix(in oklch, var(--card) 80%, transparent);
     }
-    .header-solid {
-      background-color: rgba(252, 252, 250, 0.9);
-      backdrop-filter: saturate(180%) blur(20px);
-      -webkit-backdrop-filter: saturate(180%) blur(20px);
-    }
-    .dark .header-solid {
-      background-color: rgba(14, 13, 11, 0.9);
-    }
   }
+}
 
+@layer utilities {
   /* Button hover utilities — change ONLY the background, never the text.
      Subtle mix so the change is gentle but visible.
      Primary button (dark in light mode / light in dark mode):
@@ -638,7 +729,7 @@
 
 /* Firefox — color-only, keeps default thin width */
 html {
-  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent) transparent;
+  scrollbar-color: rgba(129, 127, 121, 0.45) transparent;
   scrollbar-width: auto;
 }
 
@@ -647,10 +738,22 @@ body::-webkit-scrollbar-track {
   background: transparent;
 }
 body::-webkit-scrollbar-thumb {
-  background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+  background: rgba(129, 127, 121, 0.45);
 }
 body::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklch, var(--muted-foreground) 70%, transparent);
+  background: rgba(129, 127, 121, 0.7);
+}
+
+@supports (background: color-mix(in oklch, white, transparent)) {
+  html {
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent) transparent;
+  }
+  body::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+  }
+  body::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--muted-foreground) 70%, transparent);
+  }
 }
 
 /* Floating Pulse — hero badge motion using only translateY for GPU compositing.

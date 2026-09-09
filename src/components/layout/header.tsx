@@ -53,8 +53,8 @@ export function Header() {
 
   return (
     <motion.header
-      initial={{ opacity: 0, y: -32 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.48, ease: [0.16, 1, 0.3, 1] }}
       className="width-before-scroll-bar fixed inset-x-0 top-0 z-50 pt-4 sm:pt-5 animate-header-enter"
     >
@@ -65,7 +65,6 @@ export function Header() {
       <div className="container-edge">
         <nav
           data-scrolled={scrolled ? "true" : "false"}
-          style={{ backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)" }}
           className={cn(
             "header-solid flex items-center justify-between gap-2 rounded-full px-4 py-2.5 transition-[box-shadow,border-color] duration-500 sm:px-5"
           )}
@@ -191,7 +190,6 @@ export function Header() {
             >
               <ul
                 className="header-solid flex flex-col gap-1 rounded-3xl p-2 shadow-soft"
-                style={{ backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)" }}
               >
                 {NAV_ITEMS.map((item) => (
                   <li key={item.href}>
