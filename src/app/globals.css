@@ -1,24 +1,98 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Keep the non-primary unicode ranges local as well; the primary subsets are
-   loaded through next/font/local in layout.tsx. */
+/* Vazirmatn is bundled with the app. Each used weight is explicit so old
+   Chromium versions do not have to resolve a variable font face. */
 @font-face {
   font-family: "Vazirmatn";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400;
   font-display: swap;
-  src: url("/fonts/ec8f59eafded4799-s.p.2avnhkksosb5d.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  src: url("/fonts/Vazirmatn-Arabic-400.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Arabic-400.woff") format("woff");
+  unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Arabic-500.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Arabic-500.woff") format("woff");
+  unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Arabic-600.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Arabic-600.woff") format("woff");
+  unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Arabic-700.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Arabic-700.woff") format("woff");
+  unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Arabic-800.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Arabic-800.woff") format("woff");
+  unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
 @font-face {
   font-family: "Vazirmatn";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400;
   font-display: swap;
-  src: url("/fonts/3be67f396f7d45c3-s.10ayu6ka6csf1.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url("/fonts/Vazirmatn-Latin-400.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Latin-400.woff") format("woff");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA-02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Latin-500.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Latin-500.woff") format("woff");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA-02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Latin-600.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Latin-600.woff") format("woff");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA-02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Latin-700.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Latin-700.woff") format("woff");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA-02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Latin-800.woff2") format("woff2"),
+       url("/fonts/Vazirmatn-Latin-800.woff") format("woff");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA-02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -36,7 +110,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
-  --font-fa: var(--font-vazirmatn);
+  --font-fa: "Vazirmatn";
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -200,12 +274,22 @@
     @apply border-border outline-ring/50;
   }
 
-  /* Font switching: Vazirmatn (mandatory) for Persian RTL, Inter for English LTR */
-  html[dir="rtl"] body {
-    font-family: var(--font-vazirmatn), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Vazirmatn is the local Persian face and is inherited by form controls too. */
+  html[dir="rtl"],
+  html[dir="rtl"] body,
+  html[dir="rtl"] input,
+  html[dir="rtl"] button,
+  html[dir="rtl"] textarea,
+  html[dir="rtl"] select {
+    font-family: "Vazirmatn", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
-  html[dir="ltr"] body {
-    font-family: var(--font-inter), var(--font-vazirmatn), ui-sans-serif, system-ui, sans-serif;
+  html[dir="ltr"],
+  html[dir="ltr"] body,
+  html[dir="ltr"] input,
+  html[dir="ltr"] button,
+  html[dir="ltr"] textarea,
+  html[dir="ltr"] select {
+    font-family: var(--font-inter), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
   }
 
   body {
@@ -411,6 +495,24 @@
 .hero-glass-card,
 .surface-glass {
   background-color: var(--glass-card-fallback);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+}
+.dark .glass-card,
+.dark .hero-glass-card,
+.dark .surface-glass {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+/* The header is the same surface primitive with a stronger, opaque fallback.
+   This rule comes after the generic primitive so adding both classes does not
+   make the header accidentally use the card background. */
+.surface-glass.header-solid {
+  background-color: #fcfcfa;
+  border-color: rgba(0, 0, 0, 0.10);
+}
+.dark .surface-glass.header-solid {
+  background-color: #0e0d0b;
+  border-color: rgba(255, 255, 255, 0.10);
 }
 
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -450,6 +552,18 @@
   }
 }
 
+/* Keep the header's original translucent tint when the shared primitive is
+   used on it. The opaque declarations above remain the real old-browser
+   fallback when neither backdrop-filter nor its WebKit alias is available. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .surface-glass.header-solid {
+    background-color: rgba(252, 252, 250, 0.9);
+  }
+  .dark .surface-glass.header-solid {
+    background-color: rgba(14, 13, 11, 0.9);
+  }
+}
+
 @supports (background: color-mix(in oklch, white, transparent)) {
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass {
@@ -483,16 +597,31 @@
      Secondary button (light in light mode / dark in dark mode):
        hover → mix in 4% black so it becomes darker without affecting text. */
   .btn-primary-hover:hover {
-    background-color: color-mix(in oklch, var(--primary) 95%, #ffffff 5%);
+    background-color: #333230;
   }
   .dark .btn-primary-hover:hover {
-    background-color: color-mix(in oklch, var(--primary) 95%, #000000 5%);
+    background-color: #e8e6e1;
   }
   .btn-secondary-hover:hover {
-    background-color: color-mix(in oklch, var(--background) 96%, #000000 4%);
+    background-color: #f5f4f1;
   }
   .dark .btn-secondary-hover:hover {
-    background-color: color-mix(in oklch, var(--background) 96%, #ffffff 4%);
+    background-color: #403d38;
+  }
+
+  @supports (color: color-mix(in oklch, white, black)) {
+    .btn-primary-hover:hover {
+      background-color: color-mix(in oklch, var(--primary) 95%, #ffffff 5%);
+    }
+    .dark .btn-primary-hover:hover {
+      background-color: color-mix(in oklch, var(--primary) 95%, #000000 5%);
+    }
+    .btn-secondary-hover:hover {
+      background-color: color-mix(in oklch, var(--background) 96%, #000000 4%);
+    }
+    .dark .btn-secondary-hover:hover {
+      background-color: color-mix(in oklch, var(--background) 96%, #ffffff 4%);
+    }
   }
 
   /* Shadow Consistency: shadows are ALWAYS pure black (#000000) with adjusted
@@ -606,13 +735,36 @@
   .text-gradient {
     background: linear-gradient(
       180deg,
-      color-mix(in oklch, var(--foreground) 92%, transparent),
-      color-mix(in oklch, var(--foreground) 60%, transparent)
+      rgba(41, 40, 37, 0.92),
+      rgba(41, 40, 37, 0.60)
     );
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
+  }
+  .dark .text-gradient {
+    background: linear-gradient(
+      180deg,
+      rgba(245, 243, 239, 0.92),
+      rgba(245, 243, 239, 0.60)
+    );
+  }
+  @supports (color: color-mix(in oklch, white, transparent)) {
+    .text-gradient {
+      background: linear-gradient(
+        180deg,
+        color-mix(in oklch, var(--foreground) 92%, transparent),
+        color-mix(in oklch, var(--foreground) 60%, transparent)
+      );
+    }
+    .dark .text-gradient {
+      background: linear-gradient(
+        180deg,
+        color-mix(in oklch, var(--foreground) 92%, transparent),
+        color-mix(in oklch, var(--foreground) 60%, transparent)
+      );
+    }
   }
 
   /* Animated grain/noise-free aurora background blobs */
@@ -704,15 +856,85 @@
     background-position: 200% 0;
   }
 }
-.skeleton-shimmer {
-  background-image: linear-gradient(
-    100deg,
-    color-mix(in oklch, var(--secondary) 60%, transparent) 30%,
-    color-mix(in oklch, var(--secondary) 90%, transparent) 50%,
-    color-mix(in oklch, var(--secondary) 60%, transparent) 70%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      100deg,
+      rgba(245, 244, 241, 0.60) 30%,
+      rgba(245, 244, 241, 0.90) 50%,
+      rgba(245, 244, 241, 0.60) 70%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  }
+  .dark .skeleton-shimmer {
+    background-image: linear-gradient(
+      100deg,
+      rgba(64, 61, 56, 0.60) 30%,
+      rgba(64, 61, 56, 0.90) 50%,
+      rgba(64, 61, 56, 0.60) 70%
+    );
+  }
+  @supports (color: color-mix(in oklch, white, transparent)) {
+    .skeleton-shimmer {
+      background-image: linear-gradient(
+        100deg,
+        color-mix(in oklch, var(--secondary) 60%, transparent) 30%,
+        color-mix(in oklch, var(--secondary) 90%, transparent) 50%,
+        color-mix(in oklch, var(--secondary) 60%, transparent) 70%
+      );
+    }
+    .dark .skeleton-shimmer {
+      background-image: linear-gradient(
+        100deg,
+        color-mix(in oklch, var(--secondary) 60%, transparent) 30%,
+        color-mix(in oklch, var(--secondary) 90%, transparent) 50%,
+        color-mix(in oklch, var(--secondary) 60%, transparent) 70%
+      );
+    }
+  }
+
+/* ------------------------------------------------------------------------
+   Chromium compatibility for Tailwind opacity utilities.
+
+   Tailwind v4 emits opacity modifiers as `color-mix(in oklab, ...)`. A
+   browser that does not understand that function drops the complete color
+   declaration, even though the underlying token is otherwise valid. These
+   sRGB declarations cover the surfaces, CTA controls and text used by the
+   header, Skills, Career History and Contact sections. New browsers keep the
+   generated Tailwind values because this block only runs when color-mix is
+   unavailable.
+   ------------------------------------------------------------------------ */
+@supports not (color: color-mix(in srgb, black, white)) {
+  .bg-secondary\/40 { background-color: rgba(245, 244, 241, 0.40); }
+  .bg-secondary\/50 { background-color: rgba(245, 244, 241, 0.50); }
+  .bg-secondary\/60 { background-color: rgba(245, 244, 241, 0.60); }
+  .bg-background\/40 { background-color: rgba(253, 252, 249, 0.40); }
+  .text-foreground\/40 { color: rgba(41, 40, 37, 0.40); }
+  .text-foreground\/60 { color: rgba(41, 40, 37, 0.60); }
+  .text-foreground\/70 { color: rgba(41, 40, 37, 0.70); }
+  .text-foreground\/75 { color: rgba(41, 40, 37, 0.75); }
+  .text-foreground\/80 { color: rgba(41, 40, 37, 0.80); }
+  .text-muted-foreground\/80 { color: rgba(129, 127, 121, 0.80); }
+  .border-border\/60 { border-color: rgba(232, 230, 225, 0.60); }
+  .border-black\/5 { border-color: rgba(0, 0, 0, 0.05); }
+  .border-black\/10 { border-color: rgba(0, 0, 0, 0.10); }
+  .bg-emerald-500\/10 { background-color: rgba(16, 185, 129, 0.10); }
+  .bg-emerald-500\/60 { background-color: rgba(16, 185, 129, 0.60); }
+
+  .dark .bg-secondary\/40 { background-color: rgba(64, 61, 56, 0.40); }
+  .dark .bg-secondary\/50 { background-color: rgba(64, 61, 56, 0.50); }
+  .dark .bg-secondary\/60 { background-color: rgba(64, 61, 56, 0.60); }
+  .dark .bg-background\/40 { background-color: rgba(39, 37, 34, 0.40); }
+  .dark .text-foreground\/40 { color: rgba(245, 243, 239, 0.40); }
+  .dark .text-foreground\/60 { color: rgba(245, 243, 239, 0.60); }
+  .dark .text-foreground\/70 { color: rgba(245, 243, 239, 0.70); }
+  .dark .text-foreground\/75 { color: rgba(245, 243, 239, 0.75); }
+  .dark .text-foreground\/80 { color: rgba(245, 243, 239, 0.80); }
+  .dark .text-muted-foreground\/80 { color: rgba(170, 166, 158, 0.80); }
+  .dark .border-border\/60 { border-color: rgba(255, 255, 255, 0.054); }
+  .dark .dark\:border-white\/10 { border-color: rgba(255, 255, 255, 0.10); }
+  .dark .dark\:bg-background { background-color: #272522; }
+  .dark .dark\:text-foreground { color: #f5f3ef; }
 }
 
 /* ========================================================================
@@ -773,6 +995,23 @@ body::-webkit-scrollbar-thumb:hover {
 }
 .animate-float-delay {
   animation-delay: 1.5s;
+}
+
+/* Loading ring colors also get an sRGB-first declaration; modern browsers
+   enhance these two values with the token-aware color-mix version. */
+.loading-ring-arc {
+  border-block-start-color: rgba(41, 40, 37, 0.70);
+  border-inline-start-color: rgba(41, 40, 37, 0.40);
+}
+.dark .loading-ring-arc {
+  border-block-start-color: rgba(245, 243, 239, 0.70);
+  border-inline-start-color: rgba(245, 243, 239, 0.40);
+}
+@supports (color: color-mix(in oklch, white, transparent)) {
+  .loading-ring-arc {
+    border-block-start-color: color-mix(in oklch, var(--foreground) 70%, transparent);
+    border-inline-start-color: color-mix(in oklch, var(--foreground) 40%, transparent);
+  }
 }
 
 /* NOTE: The theme toggle ripple animation (View Transitions API) CSS used to

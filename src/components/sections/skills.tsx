@@ -94,7 +94,7 @@ export function Skills() {
         {/* Category cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           {skillGroups.map((group, i) => (
-            <RevealItem key={group.id} className="glass-card group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-black/10 p-6 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lifted dark:border-white/10">
+            <RevealItem key={group.id} className="surface-glass group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-black/10 p-6 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lifted dark:border-white/10">
               {/* Icon + title + count — all in one row. */}
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground/70 transition-colors group-hover:bg-foreground group-hover:text-background">

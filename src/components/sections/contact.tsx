@@ -22,7 +22,7 @@ export function Contact() {
           align="center"
         />
 
-        <RevealItem className="glass-card relative overflow-hidden rounded-[2rem] border border-black/10 p-8 shadow-lifted sm:p-12 dark:border-white/10">
+        <RevealItem className="surface-glass relative overflow-hidden rounded-[2rem] border border-black/10 p-8 shadow-lifted sm:p-12 dark:border-white/10">
           {/* decorative aurora */}
           <div className="pointer-events-none absolute -top-1/4 -right-1/4 h-96 w-96 rounded-full bg-foreground/[0.06] blur-3xl" />
           <div className="pointer-events-none absolute -bottom-1/4 -left-1/4 h-96 w-96 rounded-full bg-foreground/[0.04] blur-3xl" />

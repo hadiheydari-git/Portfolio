@@ -30,15 +30,6 @@ const themeScript = `
 })();
 `;
 
-// These are the exact font subsets emitted by the previous Google font build,
-// now served locally so the browser makes no third-party font requests.
-const vazirmatn = localFont({
-  src: "../../public/fonts/f1d25eabcf1db66d-s.p.21se6xk6bxqs6.woff2",
-  variable: "--font-vazirmatn",
-  display: "swap",
-  preload: true,
-});
-
 const inter = localFont({
   src: "../../public/fonts/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2",
   variable: "--font-inter",
@@ -142,7 +133,7 @@ export default function RootLayout({
         <link rel="preload" as="image" href="/hadi-heydari-headshot.webp" />
       </head>
       <body
-        className={`${vazirmatn.variable} ${inter.variable} antialiased bg-background text-foreground`}
+        className={`${inter.variable} antialiased bg-background text-foreground`}
       >
         <ThemeProvider defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <LanguageProvider>{children}</LanguageProvider>

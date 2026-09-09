@@ -26,7 +26,7 @@ export function Experience() {
           {experiences.map((exp, i) => (
             <RevealItem key={exp.id} className="relative">
             <article className="relative">
-              <div className="glass-card rounded-3xl border border-black/10 p-6 shadow-card sm:p-8 dark:border-white/10">
+              <div className="surface-glass rounded-3xl border border-black/10 p-6 shadow-card sm:p-8 dark:border-white/10">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-secondary/60 text-foreground/60 sm:flex dark:border-white/10">

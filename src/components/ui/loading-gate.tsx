@@ -52,13 +52,7 @@ export function LoadingGate({ children }: { children: React.ReactNode }) {
               <div className="loading-ring relative flex h-16 w-16 items-center justify-center">
                 <div className="absolute inset-0 rounded-full border-2 border-foreground/10" />
                 <div
-                  className="absolute inset-0 rounded-full border-2 border-transparent loading-ring-spin"
-                  style={{
-                    borderBlockStartColor:
-                      "color-mix(in oklch, var(--foreground) 70%, transparent)",
-                    borderInlineStartColor:
-                      "color-mix(in oklch, var(--foreground) 40%, transparent)",
-                  }}
+                  className="absolute inset-0 rounded-full border-2 border-transparent loading-ring-spin loading-ring-arc"
                 />
                 {/* Inner dot */}
                 <span className="h-2 w-2 rounded-full bg-foreground/30" />

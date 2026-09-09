@@ -66,7 +66,7 @@ export function Header() {
         <nav
           data-scrolled={scrolled ? "true" : "false"}
           className={cn(
-            "header-solid flex items-center justify-between gap-2 rounded-full px-4 py-2.5 transition-[box-shadow,border-color] duration-500 sm:px-5"
+            "header-solid surface-glass flex items-center justify-between gap-2 rounded-full px-4 py-2.5 transition-[box-shadow,border-color] duration-500 sm:px-5"
           )}
         >
         {/* Brand */}
@@ -189,7 +189,7 @@ export function Header() {
               className="mt-2 md:hidden"
             >
               <ul
-                className="header-solid flex flex-col gap-1 rounded-3xl p-2 shadow-soft"
+                className="header-solid surface-glass flex flex-col gap-1 rounded-3xl p-2 shadow-soft"
               >
                 {NAV_ITEMS.map((item) => (
                   <li key={item.href}>
