@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -29,13 +28,6 @@ const themeScript = `
   }
 })();
 `;
-
-const inter = localFont({
-  src: "../../public/fonts/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2",
-  variable: "--font-inter",
-  display: "swap",
-  preload: false,
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -133,7 +125,7 @@ export default function RootLayout({
         <link rel="preload" as="image" href="/hadi-heydari-headshot.webp" />
       </head>
       <body
-        className={`${inter.variable} antialiased bg-background text-foreground`}
+        className="antialiased bg-background text-foreground"
       >
         <ThemeProvider defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <LanguageProvider>{children}</LanguageProvider>
