@@ -382,6 +382,14 @@
   color: #0d0d0c !important;
   stroke: #0d0d0c !important;
 }
+/* Explicit pill geometry for older browsers that may not resolve the
+   Tailwind radius variable used by rounded-lg. */
+.skills-badge {
+  border-radius: 9999px;
+}
+.skills-badge > span {
+  border-radius: 9999px;
+}
 .skills-badge:hover {
   background-color: var(--accent) !important;
   border-color: rgba(232, 230, 225, 0.60) !important;
@@ -412,7 +420,7 @@
   Tailwind effects; older browsers receive the sRGB fallbacks below. */
 .bento-card-frame {
   overflow: hidden;
-  border-radius: 31px;
+  border-radius: 32px;
 }
 .portfolio-card-fade {
   z-index: 1;
@@ -450,6 +458,33 @@
     background-color: rgba(0, 0, 0, 0.40);
   }
 }
+
+  /* Keep the contact decoration visible everywhere; the gradient softens it
+     for older WebViews that cannot apply blur. */
+  .contact-aurora {
+    display: block;
+    pointer-events: none;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle,
+      rgba(41, 40, 37, 0.08) 0%,
+      rgba(41, 40, 37, 0.04) 42%,
+      rgba(41, 40, 37, 0) 72%
+    );
+  }
+  .dark .contact-aurora {
+    background: radial-gradient(
+      circle,
+      rgba(242, 241, 237, 0.08) 0%,
+      rgba(242, 241, 237, 0.04) 42%,
+      rgba(242, 241, 237, 0) 72%
+    );
+  }
+  @supports (filter: blur(1px)) {
+    .contact-aurora {
+      filter: blur(64px);
+    }
+  }
 
 /* ========================================================================
    Surface glass primitive — shared frosted / elevated panel treatment.

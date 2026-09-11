@@ -170,7 +170,7 @@ const BentoCard = React.memo(function BentoCard({
           outline-color override either. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-10 rounded-[31px] border-0 outline-none [box-shadow:none] [background:transparent] before:absolute before:inset-0 before:rounded-[31px] before:shadow-[inset_0_0_0_4px_var(--background)] before:content-[''] after:absolute after:inset-[4px] after:rounded-[31px] after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] after:content-['']"
+        className="pointer-events-none absolute inset-0 z-10 rounded-[32px] border-0 outline-none [box-shadow:none] [background:transparent] after:absolute after:inset-0 after:rounded-[32px] after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)] after:content-[''] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
       />
     </RevealItem>
   );
