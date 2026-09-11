@@ -41,6 +41,8 @@ export function Header() {
   }, []);
 
   React.useEffect(() => {
+    if (!("IntersectionObserver" in window)) return;
+
     const ids = NAV_ITEMS.map((i) => i.href.replace("#", ""));
     const observer = new IntersectionObserver(
       (entries) => {

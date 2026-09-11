@@ -65,6 +65,11 @@ export function RevealOnScroll({
   ...props
 }: RevealOnScrollProps) {
   const gateReady = useGateReady();
+  const [canReveal, setCanReveal] = React.useState(false);
+
+  React.useEffect(() => {
+    setCanReveal(typeof window !== "undefined" && "IntersectionObserver" in window);
+  }, []);
 
   // Memoize variants so framer-motion doesn't diff a new object each render
   const containerVariants = React.useMemo<Variants>(
@@ -86,8 +91,8 @@ export function RevealOnScroll({
   return (
     <RevealContext.Provider value={true}>
       <motion.div
-        initial="hidden"
-        whileInView={gateReady ? "visible" : "hidden"}
+        initial={canReveal ? "hidden" : false}
+        whileInView={canReveal ? (gateReady ? "visible" : "hidden") : undefined}
         viewport={viewportConfig}
         variants={containerVariants}
         className={className}
@@ -130,8 +135,8 @@ export function RevealItem({
   // Fallback standalone reveal if not nested inside a RevealOnScroll container
   return (
     <motion.div
-      initial="hidden"
-      whileInView="visible"
+      initial={canReveal ? "hidden" : false}
+      whileInView={canReveal ? "visible" : undefined}
       viewport={STANDALONE_VIEWPORT}
       variants={variants}
       className={className}

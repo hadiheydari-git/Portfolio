@@ -146,10 +146,10 @@ export function Skills() {
         {/* Category cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           {skillGroups.map((group, i) => (
-            <RevealItem key={group.id} className="surface-glass group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-black/10 p-8 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lifted dark:border-white/10">
+            <RevealItem key={group.id} className="surface-glass skills-card group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-black/10 p-8 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lifted dark:border-white/10">
               {/* Icon + title + count — all in one row. */}
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground/70 transition-colors group-hover:bg-foreground group-hover:text-background">
+                <div className="skills-category-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground/70 transition-colors">
                   {CATEGORY_ICONS[group.id]}
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -172,7 +172,7 @@ export function Skills() {
                   return (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1 text-xs font-medium text-foreground/80 transition-colors hover:bg-secondary"
+                      className="skills-badge inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1 text-xs font-medium text-foreground/80 transition-colors hover:bg-secondary"
                     >
                       {Icon ? (
                         <Icon className="h-3.5 w-3.5 text-foreground/60" />

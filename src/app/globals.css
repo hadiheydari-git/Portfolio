@@ -135,99 +135,27 @@
   --glass-card-fallback: #ffffff;
 }
 
-@supports (color: oklch(0% 0% 0deg)) {
-  :root {
-    --background: oklch(0.99 0.002 95);
-    --foreground: oklch(0.18 0.004 95);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.18 0.004 95);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.18 0.004 95);
-    --primary: oklch(0.18 0.004 95);
-    --primary-foreground: oklch(0.99 0.002 95);
-    --secondary: oklch(0.965 0.003 95);
-    --secondary-foreground: oklch(0.18 0.004 95);
-    --muted: oklch(0.965 0.003 95);
-    --muted-foreground: oklch(0.52 0.005 95);
-    --accent: oklch(0.955 0.003 95);
-    --accent-foreground: oklch(0.18 0.004 95);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.92 0.003 95);
-    --input: oklch(0.92 0.003 95);
-    --ring: oklch(0.7 0.005 95);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --sidebar: oklch(0.985 0.002 95);
-    --sidebar-foreground: oklch(0.18 0.004 95);
-    --sidebar-primary: oklch(0.18 0.004 95);
-    --sidebar-primary-foreground: oklch(0.985 0.002 95);
-    --sidebar-accent: oklch(0.965 0.003 95);
-    --sidebar-accent-foreground: oklch(0.18 0.004 95);
-    --sidebar-border: oklch(0.92 0.003 95);
-    --sidebar-ring: oklch(0.7 0.005 95);
-  }
-}
-
 .dark {
-  --background: #272522;
-  --foreground: #f5f3ef;
-  --card: #302e2b;
-  --card-foreground: #f5f3ef;
-  --popover: #302e2b;
-  --popover-foreground: #f5f3ef;
-  --primary: #f5f3ef;
-  --primary-foreground: #272522;
-  --secondary: #403d38;
-  --secondary-foreground: #f5f3ef;
-  --muted: #403d38;
-  --muted-foreground: #aaa69e;
-  --accent: #423f3a;
-  --accent-foreground: #f5f3ef;
+  --background: #0d0d0c;
+  --foreground: #f2f1ed;
+  --card: #151513;
+  --card-foreground: #f2f1ed;
+  --popover: #151513;
+  --popover-foreground: #f2f1ed;
+  --primary: #f2f1ed;
+  --primary-foreground: #0d0d0c;
+  --secondary: #232320;
+  --secondary-foreground: #f2f1ed;
+  --muted: #232320;
+  --muted-foreground: #92908a;
+  --accent: #282824;
+  --accent-foreground: #f2f1ed;
   --destructive: #e07a6e;
-  --border: rgba(255, 255, 255, 0.09);
-  --input: rgba(255, 255, 255, 0.13);
-  --ring: #928f87;
-  --glass-fallback: #2b2926;
-  --glass-card-fallback: #302e2b;
-}
-
-@supports (color: oklch(0% 0% 0deg)) {
-  .dark {
-    --background: oklch(0.16 0.004 95);
-    --foreground: oklch(0.97 0.002 95);
-    --card: oklch(0.205 0.005 95);
-    --card-foreground: oklch(0.97 0.002 95);
-    --popover: oklch(0.205 0.005 95);
-    --popover-foreground: oklch(0.97 0.002 95);
-    --primary: oklch(0.97 0.002 95);
-    --primary-foreground: oklch(0.16 0.004 95);
-    --secondary: oklch(0.265 0.006 95);
-    --secondary-foreground: oklch(0.97 0.002 95);
-    --muted: oklch(0.265 0.006 95);
-    --muted-foreground: oklch(0.7 0.006 95);
-    --accent: oklch(0.275 0.006 95);
-    --accent-foreground: oklch(0.97 0.002 95);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 9%);
-    --input: oklch(1 0 0 / 13%);
-    --ring: oklch(0.6 0.006 95);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0.005 95);
-    --sidebar-foreground: oklch(0.97 0.002 95);
-    --sidebar-primary: oklch(0.97 0.002 95);
-    --sidebar-primary-foreground: oklch(0.205 0.005 95);
-    --sidebar-accent: oklch(0.275 0.006 95);
-    --sidebar-accent-foreground: oklch(0.97 0.002 95);
-    --sidebar-border: oklch(1 0 0 / 9%);
-    --sidebar-ring: oklch(0.6 0.006 95);
-  }
+  --border: rgba(255, 255, 255, 0.14);
+  --input: rgba(255, 255, 255, 0.18);
+  --ring: #77756e;
+  --glass-fallback: #111110;
+  --glass-card-fallback: #151513;
 }
 
 @layer base {
@@ -255,10 +183,17 @@
 
   body {
     @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     scrollbar-width: auto;
+  }
+
+  html,
+  body {
+    background-color: var(--background);
   }
 
   body::-webkit-scrollbar {
@@ -276,16 +211,6 @@
 
   body::-webkit-scrollbar-thumb:hover {
     background: rgba(129, 127, 121, 0.5);
-  }
-
-  @supports (background: color-mix(in oklch, white, transparent)) {
-    body::-webkit-scrollbar-thumb {
-      background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
-    }
-
-    body::-webkit-scrollbar-thumb:hover {
-      background: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
-    }
   }
 
   /* Smooth scrolling with offset for the sticky header */
@@ -324,15 +249,6 @@
   }
   .dark {
     --selection-bg: rgba(245, 243, 239, 0.26);
-  }
-
-  @supports (color: oklch(0% 0% 0deg)) {
-    :root {
-      --selection-bg: oklch(0.18 0.004 95 / 0.22);
-    }
-    .dark {
-      --selection-bg: oklch(0.97 0.002 95 / 0.26);
-    }
   }
 
   /* Header entrance — NO animation. Any CSS animation with fill-mode
@@ -444,6 +360,46 @@
     0 16px 40px -10px rgba(0, 0, 0, 0.65);
 }
 
+/* Keep category icons readable on hover without relying on Tailwind's
+   generated :is/:where selector, which older Chromium may ignore. */
+.skills-category-icon {
+  background-color: var(--secondary);
+  color: var(--foreground);
+}
+.skills-card:hover .skills-category-icon {
+  background-color: #f2f1ed !important;
+  color: #0d0d0c !important;
+}
+.skills-card:hover .skills-category-icon svg {
+  color: #0d0d0c !important;
+  stroke: #0d0d0c !important;
+}
+.skills-badge:hover {
+  background-color: var(--accent) !important;
+  border-color: rgba(232, 230, 225, 0.60) !important;
+  color: var(--foreground) !important;
+}
+.skills-badge:hover svg {
+  color: var(--foreground) !important;
+  stroke: var(--foreground) !important;
+}
+.skills-badge:hover > span {
+  background-color: rgba(41, 40, 37, 0.40) !important;
+}
+.dark .skills-card .skills-badge:hover {
+  background-color: #262522 !important;
+  border-color: rgba(255, 255, 255, 0.054) !important;
+  color: #f2f1ed !important;
+  -webkit-text-fill-color: #f2f1ed !important;
+}
+.dark .skills-card .skills-badge:hover svg {
+  color: #f2f1ed !important;
+  stroke: #f2f1ed !important;
+}
+.dark .skills-card .skills-badge:hover > span {
+  background-color: rgba(242, 241, 237, 0.40) !important;
+}
+
 /* ========================================================================
    Surface glass primitive — shared frosted / elevated panel treatment.
    Header, contact card, skills cards, experience cards, and section
@@ -451,8 +407,8 @@
 
    Progressive enhancement layers:
    1. Always: opaque sRGB fallback matching the frosted perceived color.
-   2. backdrop-filter @supports: pre-mixed rgba + blur (no color-mix).
-   3. backdrop-filter + color-mix @supports: token-driven translucency.
+  2. backdrop-filter @supports: pre-mixed rgba + blur.
+  3. backdrop-filter enhancement uses only stable sRGB values.
    Rules live outside @layer so Turbopack does not strip backdrop-filter.
    ======================================================================== */
 .glass {
@@ -500,14 +456,14 @@
     background-color: rgba(255, 255, 255, 0.94);
   }
   .dark .glass {
-    background-color: rgba(43, 41, 38, 0.90);
+    background-color: rgba(17, 17, 16, 0.94);
   }
   .dark .glass-card,
   .dark .surface-glass {
-    background-color: rgba(48, 46, 43, 0.78);
+    background-color: rgba(21, 21, 19, 0.92);
   }
   .dark .hero-glass-card {
-    background-color: rgba(48, 46, 43, 0.85);
+    background-color: rgba(21, 21, 19, 0.95);
   }
   .header-solid {
     -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -531,31 +487,6 @@
   }
 }
 
-@supports (background: color-mix(in oklch, white, transparent)) {
-  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .glass {
-      background-color: color-mix(in oklch, var(--background) 65%, transparent);
-    }
-    .glass-card,
-    .surface-glass {
-      background-color: color-mix(in oklch, var(--card) 72%, transparent);
-    }
-    .hero-glass-card {
-      background-color: color-mix(in oklch, var(--card) 88%, transparent);
-    }
-    .dark .glass {
-      background-color: color-mix(in oklch, var(--background) 55%, transparent);
-    }
-    .dark .glass-card,
-    .dark .surface-glass {
-      background-color: color-mix(in oklch, var(--card) 55%, transparent);
-    }
-    .dark .hero-glass-card {
-      background-color: color-mix(in oklch, var(--card) 80%, transparent);
-    }
-  }
-}
-
 @layer utilities {
   /* Button hover utilities — change ONLY the background, never the text.
      Subtle mix so the change is gentle but visible.
@@ -573,22 +504,7 @@
     background-color: #f5f4f1;
   }
   .dark .btn-secondary-hover:hover {
-    background-color: #403d38;
-  }
-
-  @supports (color: color-mix(in oklch, white, black)) {
-    .btn-primary-hover:hover {
-      background-color: color-mix(in oklch, var(--primary) 95%, #ffffff 5%);
-    }
-    .dark .btn-primary-hover:hover {
-      background-color: color-mix(in oklch, var(--primary) 95%, #000000 5%);
-    }
-    .btn-secondary-hover:hover {
-      background-color: color-mix(in oklch, var(--background) 96%, #000000 4%);
-    }
-    .dark .btn-secondary-hover:hover {
-      background-color: color-mix(in oklch, var(--background) 96%, #ffffff 4%);
-    }
+    background-color: #232320;
   }
 
   /* Shadow Consistency: shadows are ALWAYS pure black (#000000) with adjusted
@@ -717,23 +633,6 @@
       rgba(245, 243, 239, 0.60)
     );
   }
-  @supports (color: color-mix(in oklch, white, transparent)) {
-    .text-gradient {
-      background: linear-gradient(
-        180deg,
-        color-mix(in oklch, var(--foreground) 92%, transparent),
-        color-mix(in oklch, var(--foreground) 60%, transparent)
-      );
-    }
-    .dark .text-gradient {
-      background: linear-gradient(
-        180deg,
-        color-mix(in oklch, var(--foreground) 92%, transparent),
-        color-mix(in oklch, var(--foreground) 60%, transparent)
-      );
-    }
-  }
-
   /* Animated grain/noise-free aurora background blobs */
   .aurora {
     position: absolute;
@@ -752,14 +651,14 @@
   /* Custom thin scrollbar for inner scroll areas */
   .scroll-thin {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent) transparent;
+    scrollbar-color: rgba(129, 127, 121, 0.35) transparent;
   }
   .scroll-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   .scroll-thin::-webkit-scrollbar-thumb {
-    background: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+    background: rgba(129, 127, 121, 0.30);
     border-radius: 9999px;
   }
   .scroll-thin::-webkit-scrollbar-track {
@@ -785,7 +684,7 @@
     transition: background 0.3s ease;
   }
   .scroll-autohide.is-scrolling::-webkit-scrollbar-thumb {
-    background: color-mix(in oklch, var(--muted-foreground) 20%, transparent);
+    background: rgba(129, 127, 121, 0.20);
   }
 
   /* Hide scrollbar entirely on the project modal body + lightbox.
@@ -841,37 +740,14 @@
       rgba(64, 61, 56, 0.60) 70%
     );
   }
-  @supports (color: color-mix(in oklch, white, transparent)) {
-    .skeleton-shimmer {
-      background-image: linear-gradient(
-        100deg,
-        color-mix(in oklch, var(--secondary) 60%, transparent) 30%,
-        color-mix(in oklch, var(--secondary) 90%, transparent) 50%,
-        color-mix(in oklch, var(--secondary) 60%, transparent) 70%
-      );
-    }
-    .dark .skeleton-shimmer {
-      background-image: linear-gradient(
-        100deg,
-        color-mix(in oklch, var(--secondary) 60%, transparent) 30%,
-        color-mix(in oklch, var(--secondary) 90%, transparent) 50%,
-        color-mix(in oklch, var(--secondary) 60%, transparent) 70%
-      );
-    }
-  }
-
 /* ------------------------------------------------------------------------
    Chromium compatibility for Tailwind opacity utilities.
 
-   Tailwind v4 emits opacity modifiers as `color-mix(in oklab, ...)`. A
-   browser that does not understand that function drops the complete color
-   declaration, even though the underlying token is otherwise valid. These
-   sRGB declarations cover the surfaces, CTA controls and text used by the
-   header, Skills, Career History and Contact sections. New browsers keep the
-   generated Tailwind values because this block only runs when color-mix is
-   unavailable.
+  Tailwind v4 opacity modifiers may be unsupported in older Chromium. These
+  unconditional sRGB declarations cover the surfaces, CTA controls and text
+  used by the header, Skills, Career History and Contact sections.
    ------------------------------------------------------------------------ */
-@supports not (color: color-mix(in srgb, black, white)) {
+@layer utilities {
   .bg-secondary\/40 { background-color: rgba(245, 244, 241, 0.40); }
   .bg-secondary\/50 { background-color: rgba(245, 244, 241, 0.50); }
   .bg-secondary\/60 { background-color: rgba(245, 244, 241, 0.60); }
@@ -888,20 +764,20 @@
   .bg-emerald-500\/10 { background-color: rgba(16, 185, 129, 0.10); }
   .bg-emerald-500\/60 { background-color: rgba(16, 185, 129, 0.60); }
 
-  .dark .bg-secondary\/40 { background-color: rgba(64, 61, 56, 0.40); }
-  .dark .bg-secondary\/50 { background-color: rgba(64, 61, 56, 0.50); }
-  .dark .bg-secondary\/60 { background-color: rgba(64, 61, 56, 0.60); }
-  .dark .bg-background\/40 { background-color: rgba(39, 37, 34, 0.40); }
-  .dark .text-foreground\/40 { color: rgba(245, 243, 239, 0.40); }
-  .dark .text-foreground\/60 { color: rgba(245, 243, 239, 0.60); }
-  .dark .text-foreground\/70 { color: rgba(245, 243, 239, 0.70); }
-  .dark .text-foreground\/75 { color: rgba(245, 243, 239, 0.75); }
-  .dark .text-foreground\/80 { color: rgba(245, 243, 239, 0.80); }
-  .dark .text-muted-foreground\/80 { color: rgba(170, 166, 158, 0.80); }
+  .dark .bg-secondary\/40 { background-color: rgba(35, 35, 32, 0.40); }
+  .dark .bg-secondary\/50 { background-color: rgba(35, 35, 32, 0.50); }
+  .dark .bg-secondary\/60 { background-color: rgba(35, 35, 32, 0.60); }
+  .dark .bg-background\/40 { background-color: rgba(13, 13, 12, 0.40); }
+  .dark .text-foreground\/40 { color: rgba(242, 241, 237, 0.40); }
+  .dark .text-foreground\/60 { color: rgba(242, 241, 237, 0.60); }
+  .dark .text-foreground\/70 { color: rgba(242, 241, 237, 0.70); }
+  .dark .text-foreground\/75 { color: rgba(242, 241, 237, 0.75); }
+  .dark .text-foreground\/80 { color: rgba(242, 241, 237, 0.80); }
+  .dark .text-muted-foreground\/80 { color: rgba(146, 144, 138, 0.80); }
   .dark .border-border\/60 { border-color: rgba(255, 255, 255, 0.054); }
   .dark .dark\:border-white\/10 { border-color: rgba(255, 255, 255, 0.10); }
-  .dark .dark\:bg-background { background-color: #272522; }
-  .dark .dark\:text-foreground { color: #f5f3ef; }
+  .dark .dark\:bg-background { background-color: #0d0d0c; }
+  .dark .dark\:text-foreground { color: #f2f1ed; }
 }
 
 /* ========================================================================
@@ -933,18 +809,6 @@ body::-webkit-scrollbar-thumb:hover {
   background: rgba(129, 127, 121, 0.7);
 }
 
-@supports (background: color-mix(in oklch, white, transparent)) {
-  html {
-    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent) transparent;
-  }
-  body::-webkit-scrollbar-thumb {
-    background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
-  }
-  body::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in oklch, var(--muted-foreground) 70%, transparent);
-  }
-}
-
 /* Floating Pulse — hero badge motion using only translateY for GPU compositing.
    Top badge starts immediately; bottom badge begins delayed by 1.5s to stay out of phase.
    This animation is always active and does not use a persistent will-change hint. */
@@ -964,8 +828,7 @@ body::-webkit-scrollbar-thumb:hover {
   animation-delay: 1.5s;
 }
 
-/* Loading ring colors also get an sRGB-first declaration; modern browsers
-   enhance these two values with the token-aware color-mix version. */
+/* Loading ring colors use the same sRGB-first values in every browser. */
 .loading-ring-arc {
   border-block-start-color: rgba(41, 40, 37, 0.70);
   border-inline-start-color: rgba(41, 40, 37, 0.40);
@@ -974,13 +837,6 @@ body::-webkit-scrollbar-thumb:hover {
   border-block-start-color: rgba(245, 243, 239, 0.70);
   border-inline-start-color: rgba(245, 243, 239, 0.40);
 }
-@supports (color: color-mix(in oklch, white, transparent)) {
-  .loading-ring-arc {
-    border-block-start-color: color-mix(in oklch, var(--foreground) 70%, transparent);
-    border-inline-start-color: color-mix(in oklch, var(--foreground) 40%, transparent);
-  }
-}
-
 /* Tailwind v4 emits transforms through the individual `translate`, `rotate`
    and `scale` properties. Older Chromium understands transform() but ignores
    those newer longhands, so keep the small set used by this page working. */
