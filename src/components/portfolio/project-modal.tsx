@@ -1082,10 +1082,10 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                         content area below. */}
                     <div
                       className={cn(
-                        "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent",
+                        "modal-cover-fade pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent",
                         project.id === "mafia-master" || project.id === "dev-solutions"
-                          ? "h-2/3 from-black/95 via-black/60 via-black/25"
-                          : "h-1/2 from-background"
+                          ? "modal-cover-fade-strong h-2/3 from-black/95 via-black/60 via-black/25"
+                          : "modal-cover-fade-soft h-1/2 from-background"
                       )}
                     />
 
@@ -1205,7 +1205,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                               key={i}
                               type="button"
                               onClick={() => setLightboxImg(img)}
-                              className="group/img relative w-full cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-secondary/30"
+                              className="gallery-item group/img relative w-full cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-secondary/30"
                             >
                               <div
                                 className={cn(
@@ -1265,7 +1265,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                               {/* Dark overlay — fades in on hover.
                                   Pointer-events-none so it doesn't block
                                   the button click. */}
-                              <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/img:bg-black/40" />
+                              <div className="gallery-hover-overlay pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/img:bg-black/40" />
                               {/* Centered zoom icon — appears on hover. */}
                               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                                 <span className="flex h-10 w-10 scale-90 items-center justify-center rounded-full bg-white/20 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/img:scale-100 group-hover/img:opacity-100">

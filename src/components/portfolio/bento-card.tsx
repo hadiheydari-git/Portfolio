@@ -76,7 +76,7 @@ const BentoCard = React.memo(function BentoCard({
         type="button"
         onClick={handleClick}
         className={cn(
-          "group relative flex h-[380px] w-full flex-col overflow-hidden rounded-3xl text-start",
+          "bento-card-frame group relative flex h-[380px] w-full flex-col overflow-hidden rounded-3xl text-start",
           "[contain:paint]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           "sm:h-[380px] lg:h-[380px]"
@@ -100,10 +100,10 @@ const BentoCard = React.memo(function BentoCard({
             other two projects keep the original lighter fade. */}
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent",
+            "portfolio-card-fade pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent",
             project.id === "mafia-master" || project.id === "dev-solutions"
-              ? "h-2/3 from-black/95 via-black/60 via-black/25"
-              : "h-1/2 from-black/85 via-black/40"
+              ? "portfolio-card-fade-strong h-2/3 from-black/95 via-black/60 via-black/25"
+              : "portfolio-card-fade-soft h-1/2 from-black/85 via-black/40"
           )}
         />
 

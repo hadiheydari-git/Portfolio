@@ -400,6 +400,49 @@
   background-color: rgba(242, 241, 237, 0.40) !important;
 }
 
+/* Compatibility hooks for image overlays. Modern browsers keep the original
+  Tailwind effects; older browsers receive the sRGB fallbacks below. */
+.bento-card-frame {
+  overflow: hidden;
+  border-radius: 1.5rem;
+}
+.portfolio-card-fade {
+  z-index: 1;
+}
+.portfolio-card-fade-soft {
+}
+.portfolio-card-fade-strong {
+}
+.modal-cover-fade {
+  z-index: 1;
+}
+.modal-cover-fade-soft {
+}
+.modal-cover-fade-strong {
+}
+.gallery-item {
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+.gallery-hover-overlay {
+  z-index: 1;
+}
+@supports not (color: color-mix(in srgb, black, white)) {
+  .portfolio-card-fade-soft {
+    background-image: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.40) 55%, transparent);
+  }
+  .portfolio-card-fade-strong,
+  .modal-cover-fade-strong {
+    background-image: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.60) 45%, rgba(0, 0, 0, 0.25) 72%, transparent);
+  }
+  .modal-cover-fade-soft {
+    background-image: linear-gradient(to top, rgba(13, 13, 12, 0.92), rgba(13, 13, 12, 0.48) 55%, transparent);
+  }
+  .gallery-item:hover .gallery-hover-overlay {
+    background-color: rgba(0, 0, 0, 0.40);
+  }
+}
+
 /* ========================================================================
    Surface glass primitive — shared frosted / elevated panel treatment.
    Header, contact card, skills cards, experience cards, and section
