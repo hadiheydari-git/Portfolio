@@ -22,7 +22,7 @@ export function Contact() {
           align="center"
         />
 
-        <RevealItem className="surface-glass relative overflow-hidden rounded-[2rem] border border-black/10 p-8 shadow-lifted sm:p-12 dark:border-white/10">
+        <RevealItem className="surface-glass relative overflow-hidden rounded-[2rem] border border-black/10 p-8 shadow-lifted dark:border-white/10">
           {/* decorative aurora */}
           <div className="pointer-events-none absolute -top-1/4 -right-1/4 h-96 w-96 rounded-full bg-foreground/[0.06] blur-3xl" />
           <div className="pointer-events-none absolute -bottom-1/4 -left-1/4 h-96 w-96 rounded-full bg-foreground/[0.04] blur-3xl" />
@@ -63,14 +63,14 @@ export function Contact() {
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
               <a
                 href="tel:+989352126934"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground btn-primary-hover transition-[background-color] duration-150"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium leading-none text-primary-foreground btn-primary-hover transition-[background-color] duration-150"
               >
                 <Phone className="h-4 w-4" />
                 {t("contact.callMe")}
               </a>
               <a
                 href="mailto:hadiheydari.business@gmail.com"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-background/40 px-6 text-sm font-medium btn-secondary-hover transition-[background-color] duration-150 dark:border-white/10"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-background/40 px-6 text-sm font-medium leading-none btn-secondary-hover transition-[background-color] duration-150 dark:border-white/10"
               >
                 <Mail className="h-4 w-4" />
                 {t("contact.emailMe")}
@@ -172,7 +172,7 @@ function PhoneRow({
             onMouseLeave={() => setHovered(false)}
             dir="ltr"
             className={
-              "relative inline-flex items-center rounded-full px-1.5 py-0.5 -mx-1.5 -my-0.5 text-sm font-medium tabular-nums transition-[background-color,color] duration-150 " +
+              "relative inline-flex items-center rounded-full px-1.5 py-0.5 -mx-1.5 -my-0.5 text-sm font-medium leading-none tabular-nums transition-[background-color,color] duration-150 " +
               (copied
                 ? "text-foreground"
                 : "text-foreground hover:bg-secondary/60 hover:text-muted-foreground cursor-pointer")

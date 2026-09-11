@@ -1021,11 +1021,16 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                     >
                       {isDevSolutions ? (
                         <video
-                          src="/videos/dev-solutions-demo.webm"
+                          src="/videos/dev-solutions-demo-optimized.webm"
+                          poster="/images/Dev Solutions/Thumbnail.webp"
+                          preload="metadata"
                           autoPlay
                           loop
                           muted
                           playsInline
+                          onLoadedMetadata={() => {
+                            requestAnimationFrame(() => setCoverMediaReady(true));
+                          }}
                           onLoadedData={() => {
                             // Defer to next frame so framer-motion commits
                             // the hidden `initial` state before we flip to

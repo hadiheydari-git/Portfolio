@@ -1,5 +1,8 @@
+@config "../../tailwind.config.ts";
 @import "tailwindcss";
 @import "tw-animate-css";
+@source "../../src/**/*.tsx";
+@source "../../src/**/*.ts";
 
 /* Vazirmatn is bundled with the app. Each used weight is explicit so old
    Chromium versions do not have to resolve a variable font face. */
@@ -7,7 +10,7 @@
   font-family: "Vazirmatn";
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url("/fonts/Vazirmatn-Arabic-400.woff2") format("woff2"),
        url("/fonts/Vazirmatn-Arabic-400.woff") format("woff");
   unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
@@ -16,7 +19,7 @@
   font-family: "Vazirmatn";
   font-style: normal;
   font-weight: 500;
-  font-display: swap;
+  font-display: block;
   src: url("/fonts/Vazirmatn-Arabic-500.woff2") format("woff2"),
        url("/fonts/Vazirmatn-Arabic-500.woff") format("woff");
   unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
@@ -25,7 +28,7 @@
   font-family: "Vazirmatn";
   font-style: normal;
   font-weight: 600;
-  font-display: swap;
+  font-display: block;
   src: url("/fonts/Vazirmatn-Arabic-600.woff2") format("woff2"),
        url("/fonts/Vazirmatn-Arabic-600.woff") format("woff");
   unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
@@ -34,7 +37,7 @@
   font-family: "Vazirmatn";
   font-style: normal;
   font-weight: 700;
-  font-display: swap;
+  font-display: block;
   src: url("/fonts/Vazirmatn-Arabic-700.woff2") format("woff2"),
        url("/fonts/Vazirmatn-Arabic-700.woff") format("woff");
   unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
@@ -43,7 +46,7 @@
   font-family: "Vazirmatn";
   font-style: normal;
   font-weight: 800;
-  font-display: swap;
+  font-display: block;
   src: url("/fonts/Vazirmatn-Arabic-800.woff2") format("woff2"),
        url("/fonts/Vazirmatn-Arabic-800.woff") format("woff");
   unicode-range: U+0600-06FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF;
@@ -65,6 +68,11 @@
   --font-sans: "Inter";
   --font-fa: "Vazirmatn";
   --font-mono: var(--font-geist-mono);
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -414,6 +422,12 @@
     inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
     0 2px 6px rgba(0, 0, 0, 0.08),
     0 16px 40px -10px rgba(0, 0, 0, 0.18);
+}
+
+/* Vazirmatn's Persian glyph box sits slightly below the visual center. */
+.header-nav-label {
+  position: relative;
+  top: -2px;
 }
 .dark .header-solid {
   background-color: #0e0d0b;

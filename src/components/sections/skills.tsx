@@ -79,7 +79,59 @@ function getKeywordIcon(en: string, forceDot: boolean = false): LucideIcon | nul
 }
 
 export function Skills() {
-  const { tt } = useLanguage();
+  const { tt, locale } = useLanguage();
+
+  React.useEffect(() => {
+    let timeout = 0;
+
+    const measureRows = () => {
+      const cards = Array.from(document.querySelectorAll<HTMLElement>("#skills .grid > div"));
+
+      cards.forEach((card) => {
+        const container = card.querySelector<HTMLElement>(":scope > div:last-child");
+        const lastBadge = container?.lastElementChild as HTMLElement | null;
+        if (lastBadge) lastBadge.style.display = "";
+      });
+
+      const rowCounts = skillGroups.map((group, groupIndex) => {
+        const card = cards[groupIndex];
+        const container = card?.querySelector<HTMLElement>(":scope > div:last-child");
+        if (!container) return { id: group.id, rows: 0 };
+
+        const rowPositions = new Set(
+          Array.from(container.children)
+            .filter((child) => getComputedStyle(child).display !== "none")
+            .map((child) => Math.round((child as HTMLElement).getBoundingClientRect().top))
+        );
+        return { id: group.id, rows: rowPositions.size };
+      });
+      const threeRowCards = rowCounts.filter((card) => card.rows >= 3);
+      if (threeRowCards.length === 1) {
+        const cardIndex = skillGroups.findIndex((group) => group.id === threeRowCards[0].id);
+        const container = cards[cardIndex]?.querySelector<HTMLElement>(":scope > div:last-child");
+        const lastBadge = container?.lastElementChild as HTMLElement | null;
+        if (lastBadge) lastBadge.style.display = "none";
+      }
+    };
+
+    const scheduleMeasure = (delay = 0) => {
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(measureRows, delay);
+    };
+
+    const handleResize = () => {
+      scheduleMeasure(100);
+    };
+
+    scheduleMeasure(250);
+    document.fonts?.ready.then(() => scheduleMeasure(100));
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [locale]);
 
   return (
     <section id="skills" className="relative py-20 sm:py-28">
@@ -94,7 +146,7 @@ export function Skills() {
         {/* Category cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           {skillGroups.map((group, i) => (
-            <RevealItem key={group.id} className="surface-glass group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-black/10 p-6 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lifted dark:border-white/10">
+            <RevealItem key={group.id} className="surface-glass group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-black/10 p-8 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lifted dark:border-white/10">
               {/* Icon + title + count — all in one row. */}
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground/70 transition-colors group-hover:bg-foreground group-hover:text-background">
@@ -109,7 +161,9 @@ export function Skills() {
                   </span>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div
+                className="flex flex-wrap gap-2"
+              >
                 {group.items.map((item, idx) => {
                   // All skill keywords render as a plain dot — no icons,
                   // for visual consistency across all three cards

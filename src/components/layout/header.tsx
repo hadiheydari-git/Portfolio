@@ -27,6 +27,12 @@ export function Header() {
   // ripple animation origin (see onClick handler).
   const themeToggleRef = React.useRef<HTMLButtonElement>(null);
 
+  const scrollToSection = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    event.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  };
+
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
@@ -72,6 +78,7 @@ export function Header() {
         {/* Brand */}
         <Link
           href="#top"
+          onClick={(event) => scrollToSection(event, "top")}
           className="group flex items-center gap-2 rounded-full px-1 py-1"
           aria-label="Hadi Heydari"
         >
@@ -81,9 +88,6 @@ export function Header() {
               alt="Hadi Heydari"
               className="h-full w-full"
             />
-          </span>
-          <span className="hidden text-sm font-medium tracking-tight sm:block">
-            {t("name")}
           </span>
         </Link>
 
@@ -96,14 +100,15 @@ export function Header() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={(event) => scrollToSection(event, id)}
                   className={cn(
-                    "relative rounded-full px-3.5 py-1.5 text-sm transition-all duration-300",
+                    "relative inline-flex h-8 items-center rounded-full px-3.5 text-sm leading-none transition-all duration-300",
                     active
                       ? "bg-secondary text-foreground font-medium"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {t(item.key)}
+                  <span className="header-nav-label">{t(item.key)}</span>
                 </Link>
               </li>
             );
@@ -114,7 +119,7 @@ export function Header() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={toggleLocale}
-            className="relative flex h-9 items-center gap-1.5 rounded-full border border-black/10 px-3 text-xs font-medium text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card dark:border-white/10"
+            className="relative flex h-9 items-center gap-1.5 rounded-full border border-black/10 px-3 text-xs font-medium leading-none text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card dark:border-white/10"
             aria-label={t("common.language")}
           >
             <Languages className="h-3.5 w-3.5" />
@@ -195,7 +200,10 @@ export function Header() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      onClick={() => setMobileOpen(false)}
+                      onClick={(event) => {
+                        scrollToSection(event, item.href.replace("#", ""));
+                        setMobileOpen(false);
+                      }}
                       className="block rounded-2xl px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                     >
                       {t(item.key)}

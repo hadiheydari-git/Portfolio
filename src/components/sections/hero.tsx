@@ -105,13 +105,18 @@ export function Hero() {
           <RevealItem className="flex flex-wrap items-center gap-3">
             <Link
               href="#work"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground btn-primary-hover transition-[background-color] duration-150"
+              onClick={(event) => {
+                event.preventDefault();
+                document.getElementById("work")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+              }}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium leading-none text-primary-foreground btn-primary-hover transition-[background-color] duration-150"
             >
               {t("hero.ctaWork")}
             </Link>
             <a
               href="tel:+989352126934"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-background/40 px-6 text-sm font-medium btn-secondary-hover transition-[background-color] duration-150 dark:border-white/10"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-background/40 px-6 text-sm font-medium leading-none btn-secondary-hover transition-[background-color] duration-150 dark:border-white/10"
             >
               {t("hero.ctaContact")}
             </a>

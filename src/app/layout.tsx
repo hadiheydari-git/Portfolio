@@ -123,6 +123,10 @@ export default function RootLayout({
         {/* Critical images — preloaded before JS hydrates for fastest LCP */}
         {/* Lighthouse LCP: only the above-the-fold hero portrait is preloaded. */}
         <link rel="preload" as="image" href="/hadi-heydari-headshot.webp" />
+        <link rel="preload" as="font" type="font/woff2" href="/fonts/Vazirmatn-Arabic-400.woff2" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/woff2" href="/fonts/Vazirmatn-Arabic-500.woff2" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/woff2" href="/fonts/Vazirmatn-Arabic-600.woff2" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/woff2" href="/fonts/Vazirmatn-Arabic-800.woff2" crossOrigin="anonymous" />
       </head>
       <body
         className="antialiased bg-background text-foreground"
