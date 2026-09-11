@@ -367,10 +367,18 @@
   color: var(--foreground);
 }
 .skills-card:hover .skills-category-icon {
+  background-color: #292825 !important;
+  color: #fdfcf9 !important;
+}
+.skills-card:hover .skills-category-icon svg {
+  color: #fdfcf9 !important;
+  stroke: #fdfcf9 !important;
+}
+.dark .skills-card:hover .skills-category-icon {
   background-color: #f2f1ed !important;
   color: #0d0d0c !important;
 }
-.skills-card:hover .skills-category-icon svg {
+.dark .skills-card:hover .skills-category-icon svg {
   color: #0d0d0c !important;
   stroke: #0d0d0c !important;
 }
@@ -404,7 +412,7 @@
   Tailwind effects; older browsers receive the sRGB fallbacks below. */
 .bento-card-frame {
   overflow: hidden;
-  border-radius: 1.5rem;
+  border-radius: 31px;
 }
 .portfolio-card-fade {
   z-index: 1;

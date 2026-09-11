@@ -113,10 +113,10 @@ const BentoCard = React.memo(function BentoCard({
             on the left, both sharing the SAME bottom padding so their baselines
             align horizontally. The button uses a simple solid background with a
             hover color swap (dark → white, text inverts). */}
-        <div className="relative z-10 mt-auto flex items-end justify-between gap-3 p-5 sm:p-6">
+        <div className="relative z-10 mt-auto flex w-full min-w-0 items-end justify-between gap-3 p-8">
           {/* Text block: title + tagline, anchored to the start (right in RTL,
               left in LTR). Uses flex-col so title and tagline stack vertically. */}
-          <div className="flex flex-col gap-2">
+          <div className="min-w-0 flex flex-col gap-2">
             <h3
               className={cn(
                 "font-semibold tracking-tight text-balance text-white",
@@ -170,7 +170,7 @@ const BentoCard = React.memo(function BentoCard({
           outline-color override either. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-px -right-[2px] -bottom-px -left-px z-10 rounded-[33px] border-0 outline-none [box-shadow:none] [background:transparent] before:absolute before:inset-0 before:rounded-[33px] before:shadow-[inset_0_0_0_4px_var(--background)] before:content-[''] after:absolute after:inset-[4px] after:rounded-[29px] after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] after:content-['']"
+        className="pointer-events-none absolute inset-0 z-10 rounded-[31px] border-0 outline-none [box-shadow:none] [background:transparent] before:absolute before:inset-0 before:rounded-[31px] before:shadow-[inset_0_0_0_4px_var(--background)] before:content-[''] after:absolute after:inset-[4px] after:rounded-[31px] after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] after:content-['']"
       />
     </RevealItem>
   );
