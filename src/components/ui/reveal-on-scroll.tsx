@@ -65,7 +65,7 @@ export function RevealOnScroll({
   ...props
 }: RevealOnScrollProps) {
   const gateReady = useGateReady();
-  const [canReveal, setCanReveal] = React.useState(false);
+  const [canReveal, setCanReveal] = React.useState(true);
 
   React.useEffect(() => {
     setCanReveal(typeof window !== "undefined" && "IntersectionObserver" in window);
@@ -121,6 +121,11 @@ export function RevealItem({
 }: RevealItemProps) {
   const isInReveal = React.useContext(RevealContext);
   const shouldReduceMotion = useReducedMotion();
+  const [canReveal, setCanReveal] = React.useState(true);
+
+  React.useEffect(() => {
+    setCanReveal(typeof window !== "undefined" && "IntersectionObserver" in window);
+  }, []);
 
   const variants = shouldReduceMotion ? ITEM_VARIANTS_REDUCED : ITEM_VARIANTS;
 

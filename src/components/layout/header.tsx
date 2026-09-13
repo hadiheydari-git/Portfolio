@@ -61,10 +61,7 @@ export function Header() {
 
   return (
     <motion.header
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.48, ease: [0.16, 1, 0.3, 1] }}
-      className="width-before-scroll-bar fixed inset-x-0 top-0 z-50 pt-4 sm:pt-5 animate-header-enter"
+      className="header-entrance width-before-scroll-bar fixed inset-x-0 top-0 z-50 pt-4 sm:pt-5"
     >
       {/* Container-edge wrapper centers the header and applies the SAME
           horizontal padding as all content sections. The capsule nav sits
@@ -74,7 +71,7 @@ export function Header() {
         <nav
           data-scrolled={scrolled ? "true" : "false"}
           className={cn(
-            "header-solid surface-glass flex items-center justify-between gap-2 rounded-full px-4 py-2.5 transition-[box-shadow,border-color] duration-500 sm:px-5"
+            "header-solid surface-glass flex flex-row-reverse items-center justify-between gap-2 rounded-full px-4 py-2.5 transition-[box-shadow,border-color] duration-500 sm:flex-row sm:px-5"
           )}
         >
         {/* Brand */}
@@ -121,7 +118,7 @@ export function Header() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={toggleLocale}
-            className="relative flex h-9 items-center gap-1.5 rounded-full border border-black/10 px-3 text-xs font-medium leading-none text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card dark:border-white/10"
+            className="order-3 relative flex h-9 items-center gap-1.5 rounded-full border border-black/10 px-3 text-xs font-medium leading-none text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card md:order-none dark:border-white/10"
             aria-label={t("common.language")}
           >
             <Languages className="h-3.5 w-3.5" />
@@ -146,7 +143,7 @@ export function Header() {
                   : e
               );
             }}
-            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card dark:border-white/10"
+            className="order-2 relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card md:order-none dark:border-white/10"
             aria-label={t("common.theme")}
           >
             <AnimatePresence mode="wait" initial={false}>
@@ -177,7 +174,7 @@ export function Header() {
           {/* Mobile menu trigger */}
           <button
             onClick={() => setMobileOpen((p) => !p)}
-              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card md:hidden dark:border-white/10"
+              className="order-1 relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-foreground transition-all duration-300 before:absolute before:-inset-2 before:rounded-full hover:bg-secondary hover:shadow-card md:order-none md:hidden dark:border-white/10"
               aria-label={locale === "fa" ? "منو" : "Menu"}
           >
             {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}

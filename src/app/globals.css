@@ -251,14 +251,6 @@
     --selection-bg: rgba(245, 243, 239, 0.26);
   }
 
-  /* Header entrance — NO animation. Any CSS animation with fill-mode
-     on the header creates a persistent compositing layer that breaks
-     backdrop-filter on the nav (especially in RTL/Chromium). */
-  .animate-header-enter {
-    opacity: 1;
-  }
-
-
 }
 
 @layer utilities {
