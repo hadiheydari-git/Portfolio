@@ -1267,7 +1267,7 @@ export function ProjectModal({ project, open, onOpenChange }: Props) {
                                   the button click. */}
                               <div className="gallery-hover-overlay pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/img:bg-black/40" />
                               {/* Centered zoom icon — appears on hover. */}
-                              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                                 <span className="flex h-10 w-10 scale-90 items-center justify-center rounded-full bg-white/20 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/img:scale-100 group-hover/img:opacity-100">
                                   <ZoomIn className="h-5 w-5" />
                                 </span>

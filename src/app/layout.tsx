@@ -10,6 +10,17 @@ const SITE_DESCRIPTION =
   "من هادی حیدری، طراح محصول هستم؛ علاقه‌مند به حل مسئله و ساخت راه‌حل‌های نوآورانه‌ام و باور دارم مسیر رشد از یادگیری مستمر، پذیرش بازخورد و اصلاح آگاهانه شکل می‌گیرد.";
 const SITE_DESCRIPTION_EN =
   "I’m Hadi Heydari, a Product Designer. I’m passionate about solving problems and building innovative solutions, and I believe growth comes from continuous learning, embracing feedback, and intentional iteration.";
+const SITE_KEYWORDS = [
+  "هادی حیدری",
+  "هادی حیدری طراح",
+  "هادی حیدری طراح محصول",
+  "طراح محصول",
+  "طراحی محصول",
+  "طراحی تجربه کاربری",
+  "Hadi Heydari",
+  "Product Designer",
+  "UX/UI Designer",
+];
 
 const themeScript = `
 (function () {
@@ -39,16 +50,22 @@ export const metadata: Metadata = {
     template: "%s | Hadi Heydari",
   },
   description: SITE_DESCRIPTION,
-  keywords: [
-    "Product Designer",
-    "طراح محصول",
-    "UX/UI",
-    "Design System",
-    "Portfolio",
-    "Hadi Heydari",
-    "هادی حیدری",
-  ],
+  keywords: SITE_KEYWORDS,
   authors: [{ name: "Hadi Heydari" }],
+  creator: "Hadi Heydari",
+  publisher: "Hadi Heydari",
+  category: "Portfolio",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   // Browser-tab favicon + Apple/Android home-screen icons.
   // Uses the same header-avatar.png that appears in the site header
   // so the brand identity is consistent everywhere.
@@ -61,19 +78,19 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Hadi Heydari | Product Designer",
-    description: SITE_DESCRIPTION_EN,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     type: "website",
     url: SITE_URL,
-    siteName: "Hadi Heydari",
-    locale: "en_US",
-    alternateLocale: ["fa_IR"],
-    images: [{ url: "/hadi-heydari-profile.webp", width: 1200, height: 630, alt: "Hadi Heydari, Product Designer" }],
+    siteName: SITE_TITLE,
+    locale: "fa_IR",
+    alternateLocale: ["en_US"],
+    images: [{ url: "/hadi-heydari-profile.webp", width: 1200, height: 630, alt: "هادی حیدری، طراح محصول" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hadi Heydari | Product Designer",
-    description: SITE_DESCRIPTION_EN,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: ["/hadi-heydari-profile.webp"],
   },
   alternates: { canonical: "/" },
@@ -88,8 +105,10 @@ const structuredData = {
       name: "Hadi Heydari",
       alternateName: "هادی حیدری",
       jobTitle: "Product Designer",
+      description: SITE_DESCRIPTION_EN,
       url: SITE_URL,
       image: `${SITE_URL}/hadi-heydari-headshot.webp`,
+      knowsAbout: ["Product design", "UX design", "UI design", "Design systems"],
       sameAs: [
         "https://www.linkedin.com/in/hadiheydari-productdesigner/",
         "https://t.me/Hadiheydari_contact",
@@ -98,11 +117,22 @@ const structuredData = {
     },
     {
       "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
       name: "Hadi Heydari | Product Designer",
       alternateName: "هادی حیدری | طراح محصول",
       url: SITE_URL,
       inLanguage: ["fa", "en"],
       publisher: { "@id": `${SITE_URL}/#person` },
+    },
+    {
+      "@type": "ProfilePage",
+      "@id": `${SITE_URL}/#profilepage`,
+      url: SITE_URL,
+      name: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      inLanguage: "fa-IR",
+      mainEntity: { "@id": `${SITE_URL}/#person` },
+      isPartOf: { "@id": `${SITE_URL}/#website` },
     },
   ],
 };

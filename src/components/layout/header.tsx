@@ -61,6 +61,9 @@ export function Header() {
 
   return (
     <motion.header
+      initial={{ opacity: 0, y: -24, }}
+      animate={{ opacity: 1, y: 0,}}
+      transition={{ duration: 0.55, ease: "easeOut" }}
       className="header-entrance width-before-scroll-bar fixed inset-x-0 top-0 z-50 pt-4 sm:pt-5"
     >
       {/* Container-edge wrapper centers the header and applies the SAME
