@@ -7,7 +7,7 @@ import { SectionHeading } from "@/components/sections/section-heading";
 import { useLanguage } from "@/components/providers/language-provider";
 import { RevealOnScroll, RevealItem } from "@/components/ui/reveal-on-scroll";
 
-const PHONE_NUMBER = "+989352126934";
+const PHONE_NUMBER = "+9893521269344";
 
 export function Contact() {
   const { t, locale } = useLanguage();
@@ -62,7 +62,7 @@ export function Contact() {
             {/* Right: actions */}
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
               <a
-                href="tel:+989352126934"
+                href="tel:+9893521269344"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium leading-none text-primary-foreground btn-primary-hover transition-[background-color] duration-150"
               >
                 <Phone className="h-4 w-4" />

@@ -85,7 +85,7 @@ export function Hero() {
           <RevealItem className="flex flex-col gap-3">
             <h1 className="text-balance text-4xl font-extrabold tracking-tight md:text-5xl lg:text-6xl xl:text-7xl">
               <span className="text-foreground dark:text-white">{tt(profile.name)}</span>
-              <span className="block text-base font-medium tracking-tight text-muted-foreground md:text-lg lg:text-2xl">
+              <span className="mt-4 block text-base font-medium tracking-tight text-muted-foreground md:text-lg lg:text-2xl">
                 {tt(profile.role)}
               </span>
             </h1>
@@ -101,7 +101,7 @@ export function Hero() {
             </p>
           </RevealItem>
 
-          {/* CTAs */}
+          {/* CTAs temporarily hidden for visual comparison.
           <RevealItem className="flex flex-wrap items-center gap-3">
             <Link
               href="#work"
@@ -115,12 +115,13 @@ export function Hero() {
               {t("hero.ctaWork")}
             </Link>
             <a
-              href="tel:+989352126934"
+              href="tel:+9893521269344"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-background/40 px-6 text-sm font-medium leading-none btn-secondary-hover transition-[background-color] duration-150 dark:border-white/10"
             >
               {t("hero.ctaContact")}
             </a>
           </RevealItem>
+          */}
 
           {/* Stats — numbers count up from 0; each number is centered over its label */}
           <RevealItem className="mt-2 flex w-full max-w-md items-start gap-8">

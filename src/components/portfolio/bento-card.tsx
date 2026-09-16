@@ -82,15 +82,17 @@ const BentoCard = React.memo(function BentoCard({
           "sm:h-[380px] lg:h-[380px]"
         )}
       >
-        <Image
-          src={project.cover}
-          alt={tt(project.title)}
-          fill
-          sizes={sizes}
-          quality={80}
-          loading="lazy"
-          className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-        />
+        <div className="absolute -inset-px overflow-hidden">
+          <Image
+            src={project.cover}
+            alt={tt(project.title)}
+            fill
+            sizes={sizes}
+            quality={80}
+            loading="lazy"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+          />
+        </div>
 
         {/* Bottom fade — dark gradient overlay on the lower portion of the
             card image so the title/tagline stay readable.

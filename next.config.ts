@@ -5,6 +5,19 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  async headers() {
+    return [
+      {
+        source: "/hadi-heydari-profile.webp",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
   images: {
     // Allow both 75 (default) and 80 (used by bento-card covers + modal
     // cover for slightly higher quality on retina displays). Next.js 16
