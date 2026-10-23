@@ -115,7 +115,7 @@ export function Hero() {
               {t("hero.ctaWork")}
             </Link>
             <a
-              href="tel:+9893521269344"
+              href="tel:+989352126934"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-background/40 px-6 text-sm font-medium leading-none btn-secondary-hover transition-[background-color] duration-150 dark:border-white/10"
             >
               {t("hero.ctaContact")}
