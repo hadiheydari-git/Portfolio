@@ -105,7 +105,7 @@ export const dict = {
       availability: "آماده برای همکاری",
       responseTime: "پاسخ معمولاً زیر ۲۴ ساعت",
       phoneLabel: "شماره تماس",
-      phone: "+9893521269344",
+      phone: "+989352126934",
       callMe: "تماس با من",
     },
     // Footer
@@ -212,7 +212,7 @@ export const dict = {
       availability: "Available for work",
       responseTime: "Usually replies within 24h",
       phoneLabel: "Phone",
-      phone: "+9893521269344",
+      phone: "+989352126934",
       callMe: "Contact me",
     },
     footer: {
